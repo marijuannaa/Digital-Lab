@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dijital Laboratuvar | Modüler Analiz ve Veri Portalı</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Simgeleri CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f6ff',
+                            100: '#e0edff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            box-shadow: 0 10px 30px -10px rgba(79, 70, 229, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Arka Plan Efekt Gradiyenti -->
+    <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div class="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl"></div>
+        <div class="absolute top-1/3 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-40 left-1/3 w-96 h-96 bg-emerald-600/15 rounded-full blur-3xl"></div>
+    </div>
+
+    <!-- Header / Üst Bilgi -->
+    <header class="relative z-10 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-xl shadow-lg shadow-indigo-500/20">
+                    <i data-lucide="flask-conical" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <span class="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
+                        Dijital Laboratuvar
+                    </span>
+                    <span class="hidden sm:inline-block text-xs text-indigo-400 font-mono ml-2 px-2 py-0.5 rounded-full bg-indigo-950/60 border border-indigo-800/50">
+                        v1.0.0
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <a href="https://github.com/marijuannaa" target="_blank" rel="noopener noreferrer" 
+                   class="flex items-center space-x-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 px-3 py-1.5 rounded-lg transition-all shadow-sm">
+                    <i data-lucide="github" class="w-4 h-4"></i>
+                    <span>@marijuannaa</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main İçerik -->
+    <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col gap-10">
+
+        <!-- Hero Karşılama Alanı -->
+        <section class="text-center max-w-3xl mx-auto space-y-4 pt-4">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
+                Çevrimiçi Spektroskopi & Veri Analiz Platformu
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                Bilimsel Analiz Araçları Hub'ı
+            </h1>
+            <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+                Laboratuvar verilerinizi (FTIR, UV-Vis, CSV) doğrudan tarayıcınızda işleyin, görselleştirin ve yüksek kalitede grafikleştiriın. Sunucuya veri yüklemeden %100 güvenli çalışın.
+            </p>
+
+            <!-- Arama ve Filtreleme Barı -->
+            <div class="pt-4 max-w-md mx-auto">
+                <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                    <input type="text" id="search-input" placeholder="Laboratuvar aracı veya format ara..." 
+                           class="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                           onkeyup="filterTools()">
+                </div>
+            </div>
+        </section>
+
+        <!-- Araç Kartları Izgarası (Grid) -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2" id="tools-grid">
+
+            <!-- KART 1: UV-Vis Spektrum Vizüalizörü -->
+            <article class="tool-card glass-card rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden" data-keywords="uv-vis uv vis spektrofotometre spektrum lambda max nm klorofil">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="p-3 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                            <i data-lucide="sun" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                            Spektroskopi
+                        </span>
+                    </div>
+
+                    <div>
+                        <h2 class="text-lg font-bold text-white group-hover:text-purple-300 transition-colors flex items-center gap-2">
+                            UV-Vis Spektrum Maker
+                            <i data-lucide="arrow-up-right" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-purple-400"></i>
+                        </h2>
+                        <p class="text-slate-400 text-xs mt-2 leading-relaxed">
+                            UV-Vis spektrofotometre CSV verilerini grafikleyin. Çift sütun desteği, otomatik $\lambda_{\max}$ tespiti ve gürültü azaltma filtresi içerir.
+                        </p>
+                    </div>
+
+                    <!-- Etiketler -->
+                    <div class="flex flex-wrap gap-1.5 pt-2">
+                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">200-800 nm</span>
+                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">λmax Tespiti</span>
+                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Gürültü Filtresi</span>
+                    </div>
+                </div>
+
+                <div class="pt-6 mt-4 border-t border-slate-800/80 flex items-center justify-between">
+                    <span class="text-[11px] text-emerald-400 flex items-center gap-1.5 font-medium">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Yayında
+                    </span>
+                    <a href="https://marijuannaa.github.io/Uv-Vis-Spectrum-Maker/" target="_blank" rel="noopener noreferrer" 
+                       class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg transition-colors shadow-md shadow-purple-600/20">
+                        <span>Araca Git</span>
+                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                    </a>
+                </div>
+            </article>
+
+            <!-- KART 2: FTIR Spektrum Vizüalizörü -->
+            <article class="tool-card glass-card rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden" data-keywords="ftir ir infrared kızılötesi transmitans absorbans cm-1">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="p-3 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                            <i data-lucide="activity" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                            Spektroskopi
+                        </span>
+                    </div>
+
+                    <div>
+                        <h2 class="text-lg font-bold text-white group-hover:text-blue-300 transition-colors flex items-center gap-2">
+                            FTIR Spektrum Maker
+                            <i data-lucide="arrow-up-right" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-blue-400"></i>
+                        </h2>
+                        <p class="text-slate-400 text-xs mt-2 leading-relaxed">
+                            Fourier transform kızılötesi (FTIR) spektral verilerinizi görselleştirin. Transmitans (%T) - Absorbans dönüşümü ve işlevsel grup tespiti.
+                        </p>
+                    </div>
+
+                    <!-- Etiketler -->
+                    <div class="flex flex-wrap gap-1.5 pt-2">
+                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">4000-400 cm⁻¹</span>
+                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">%T ↔ A Dönüşüm</span>
+                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Grup Analizi</span>
+                    </div>
+                </div>
+
+                <div class="pt-6 mt-4 border-t border-slate-800/80 flex items-center justify-between">
+                    <span class="text-[11px] text-emerald-400 flex items-center gap-1.5 font-medium">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Yayında
+                    </span>
+                    <a href="https://marijuannaa.github.io/FTIR-Spectrum-Maker/" target="_blank" rel="noopener noreferrer" 
+                       class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg transition-colors shadow-md shadow-blue-600/20">
+                        <span>Araca Git</span>
+                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                    </a>
+                </div>
+            </article>
+
+            <!-- KART 3: CSV to XLSX Converter -->
+            <article class="tool-card glass-card rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden" data-keywords="csv xlsx excel dönüştürücü converter tablo veri txt dat">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                            <i data-lucide="file-spreadsheet" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                            Veri Araçları
+                        </span>
+                    </div>
+
+                    <div>
+                        <h2 class="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors flex items-center gap-2">
+                            CSV to XLSX Converter
+                            <i data-lucide="arrow-up-right" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-emerald-400"></i>
+                        </h2>
+                        <p class="text-slate-400 text-xs mt-2 leading-relaxed">
+                            Laboratuvar cihazlarından alınan karmaşık CSV veya TXT verilerini hızlı ve biçimlendirilmiş biçimde Excel (.xlsx) dosyalarına dönüştürün.
+                        </p>
+                    </div>
+
+                    <!-- Etiketler -->
+                    <div class="flex flex-wrap gap-1.5 pt-2">
+                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">CSV / TXT / DAT</span>
+                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Excel Formatı</span>
+                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Toplu Dönüştürme</span>
+                    </div>
+                </div>
+
+                <div class="pt-6 mt-4 border-t border-slate-800/80 flex items-center justify-between">
+                    <span class="text-[11px] text-emerald-400 flex items-center gap-1.5 font-medium">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Yayında
+                    </span>
+                    <a href="https://marijuannaa.github.io/Csv-to-xlsx-converter/" target="_blank" rel="noopener noreferrer" 
+                       class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg transition-colors shadow-md shadow-emerald-600/20">
+                        <span>Araca Git</span>
+                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                    </a>
+                </div>
+            </article>
+
+        </section>
+
+        <!-- Arama Sonucu Bulunamadı Mesajı -->
+        <div id="no-results" class="hidden text-center py-12">
+            <i data-lucide="search-x" class="w-10 h-10 text-slate-600 mx-auto mb-3"></i>
+            <p class="text-slate-400 text-sm">Aramanızla eşleşen bir laboratuvar aracı bulunamadı.</p>
+        </div>
+
+    </main>
+
+    <!-- Footer / Alt Bilgi -->
+    <footer class="relative z-10 border-t border-slate-800/80 bg-slate-900/40 mt-auto py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <p>© 2026 Dijital Laboratuvar — <a href="https://github.com/marijuannaa" class="text-slate-400 hover:underline">@marijuannaa</a></p>
+            <p class="flex items-center gap-1 text-slate-400">
+                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+                Tüm veri işlemleri %100 yerel (istemci taraflı) olarak gerçekleşir.
+            </p>
+        </div>
+    </footer>
+
+    <!-- JS Mantığı -->
+    <script>
+        // Lucide Simgelerini Yükleme
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+
+        // Araç Filtreleme Arama Fonksiyonu
+        function filterTools() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.tool-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const keywords = card.getAttribute('data-keywords') || '';
+                const text = card.innerText.toLowerCase();
+
+                if (text.includes(query) || keywords.includes(query)) {
+                    card.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+
+            const noResultsEl = document.getElementById('no-results');
+            if (visibleCount === 0) {
+                noResultsEl.classList.remove('hidden');
+            } else {
+                noResultsEl.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
