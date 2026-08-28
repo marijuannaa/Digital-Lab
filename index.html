@@ -3,11 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dijital Laboratuvar | Modüler Analiz ve Veri Portalı</title>
+    <title>Dijital Laboratuvar | Birleşik Spektroskopi & Veri Analiz Stüdyosu</title>
+    <meta name="description" content="FTIR, UV-Vis spektroskopisi, CSV format dönüştürücü ve bilimsel analiz araçları içeren modüler dijital laboratuvar platformu.">
+    
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Plotly.js CDN (Bilimsel grafik çizimi için) -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <!-- PapaParse CDN (CSV ayrıştırma için) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- SheetJS (CSV to XLSX dönüştürme için) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- JSZip (Toplu ZIP indirme için) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- Lucide Simgeleri CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Özel Laboratuvar Stilleri -->
+    <link rel="stylesheet" href="css/custom.css">
+
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -17,273 +30,1150 @@
                         brand: {
                             50: '#f0f6ff',
                             100: '#e0edff',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                            900: '#1e3a8a',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
                         }
                     }
                 }
             }
         }
     </script>
-    <style>
-        .glass-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .glass-card:hover {
-            border-color: rgba(99, 102, 241, 0.4);
-            box-shadow: 0 10px 30px -10px rgba(79, 70, 229, 0.3);
-        }
-    </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white">
 
-    <!-- Arka Plan Efekt Gradiyenti -->
+    <!-- Arka Plan Efekt Gradiyentleri -->
     <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div class="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl"></div>
-        <div class="absolute top-1/3 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl"></div>
-        <div class="absolute -bottom-40 left-1/3 w-96 h-96 bg-emerald-600/15 rounded-full blur-3xl"></div>
+        <div class="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl animate-glow"></div>
+        <div class="absolute top-1/3 -right-40 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl animate-glow" style="animation-delay: 2s;"></div>
+        <div class="absolute -bottom-40 left-1/3 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl"></div>
     </div>
 
-    <!-- Header / Üst Bilgi -->
-    <header class="relative z-10 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="p-2 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-xl shadow-lg shadow-indigo-500/20">
-                    <i data-lucide="flask-conical" class="w-6 h-6 text-white"></i>
+    <!-- Üst Bilgi / Header & Navigasyon -->
+    <header class="relative z-30 border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md sticky top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo & Başlık -->
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('hub')">
+                    <div class="p-2 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-xl shadow-lg shadow-indigo-500/20">
+                        <i data-lucide="flask-conical" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div>
+                        <span class="text-base sm:text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-indigo-200">
+                            Dijital Laboratuvar
+                        </span>
+                        <span class="hidden md:inline-block text-[10px] text-indigo-400 font-mono ml-2 px-2 py-0.5 rounded-full bg-indigo-950/60 border border-indigo-800/50">
+                            v2.0 Pro Suite
+                        </span>
+                    </div>
                 </div>
-                <div>
-                    <span class="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
-                        Dijital Laboratuvar
-                    </span>
-                    <span class="hidden sm:inline-block text-xs text-indigo-400 font-mono ml-2 px-2 py-0.5 rounded-full bg-indigo-950/60 border border-indigo-800/50">
-                        v1.0.0
-                    </span>
+
+                <!-- Masaüstü Sekme Butonları -->
+                <nav class="hidden lg:flex items-center space-x-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800/80">
+                    <button onclick="switchTab('hub')" data-tab="hub" class="nav-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                        <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+                        <span>Hub</span>
+                    </button>
+                    <button onclick="switchTab('ftir')" data-tab="ftir" class="nav-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                        <i data-lucide="activity" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span>FTIR Maker</span>
+                    </button>
+                    <button onclick="switchTab('uvvis')" data-tab="uvvis" class="nav-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                        <i data-lucide="sun" class="w-3.5 h-3.5 text-purple-400"></i>
+                        <span>UV-Vis Maker</span>
+                    </button>
+                    <button onclick="switchTab('csv-converter')" data-tab="csv-converter" class="nav-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-amber-400"></i>
+                        <span>CSV Dönüştürücü</span>
+                    </button>
+                    <button onclick="switchTab('xlsx-converter')" data-tab="xlsx-converter" class="nav-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                        <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-400"></i>
+                        <span>CSV ➔ Excel</span>
+                    </button>
+                    <button onclick="switchTab('calculators')" data-tab="calculators" class="nav-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                        <i data-lucide="calculator" class="w-3.5 h-3.5 text-cyan-400"></i>
+                        <span>Hesaplayıcı & Tablo</span>
+                    </button>
+                </nav>
+
+                <!-- Sağ Menü -->
+                <div class="flex items-center space-x-3">
+                    <a href="https://github.com/marijuannaa" target="_blank" rel="noopener noreferrer" 
+                       class="flex items-center space-x-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 px-3 py-1.5 rounded-lg transition shadow-sm">
+                        <i data-lucide="github" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">@marijuannaa</span>
+                    </a>
                 </div>
             </div>
 
-            <div class="flex items-center space-x-4">
-                <a href="https://github.com/marijuannaa" target="_blank" rel="noopener noreferrer" 
-                   class="flex items-center space-x-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 px-3 py-1.5 rounded-lg transition-all shadow-sm">
-                    <i data-lucide="github" class="w-4 h-4"></i>
-                    <span>@marijuannaa</span>
-                </a>
+            <!-- Mobil / Tablet Hızlı Sekmeler Çubuğu (Yatay Kaydırılabilir) -->
+            <div class="flex lg:hidden overflow-x-auto py-2 space-x-1 border-t border-slate-800/60 scrollbar-none">
+                <button onclick="switchTab('hub')" data-tab="hub" class="nav-tab-btn whitespace-nowrap px-2.5 py-1 text-xs rounded-lg font-medium transition flex items-center gap-1">
+                    <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i> Hub
+                </button>
+                <button onclick="switchTab('ftir')" data-tab="ftir" class="nav-tab-btn whitespace-nowrap px-2.5 py-1 text-xs rounded-lg font-medium transition flex items-center gap-1">
+                    <i data-lucide="activity" class="w-3.5 h-3.5 text-blue-400"></i> FTIR
+                </button>
+                <button onclick="switchTab('uvvis')" data-tab="uvvis" class="nav-tab-btn whitespace-nowrap px-2.5 py-1 text-xs rounded-lg font-medium transition flex items-center gap-1">
+                    <i data-lucide="sun" class="w-3.5 h-3.5 text-purple-400"></i> UV-Vis
+                </button>
+                <button onclick="switchTab('csv-converter')" data-tab="csv-converter" class="nav-tab-btn whitespace-nowrap px-2.5 py-1 text-xs rounded-lg font-medium transition flex items-center gap-1">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-amber-400"></i> CSV Dönüştür
+                </button>
+                <button onclick="switchTab('xlsx-converter')" data-tab="xlsx-converter" class="nav-tab-btn whitespace-nowrap px-2.5 py-1 text-xs rounded-lg font-medium transition flex items-center gap-1">
+                    <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-400"></i> Excel
+                </button>
+                <button onclick="switchTab('calculators')" data-tab="calculators" class="nav-tab-btn whitespace-nowrap px-2.5 py-1 text-xs rounded-lg font-medium transition flex items-center gap-1">
+                    <i data-lucide="calculator" class="w-3.5 h-3.5 text-cyan-400"></i> Hesaplayıcı
+                </button>
             </div>
         </div>
     </header>
 
-    <!-- Main İçerik -->
-    <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col gap-10">
+    <!-- Ana Konteyner -->
+    <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6">
 
-        <!-- Hero Karşılama Alanı -->
-        <section class="text-center max-w-3xl mx-auto space-y-4 pt-4">
-            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium">
-                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
-                Çevrimiçi Spektroskopi & Veri Analiz Platformu
+        <!-- ========================================== -->
+        <!-- TAB 1: HUB / DASHBOARD (ANA SAYFA) -->
+        <!-- ========================================== -->
+        <section id="tab-hub" class="tab-content active space-y-8 animate-fade-in">
+            <!-- Hero Başlık -->
+            <div class="text-center max-w-3xl mx-auto space-y-4 pt-2">
+                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
+                    Bütünleşik Spektroskopi & Veri Analiz Platformu
+                </div>
+                <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                    Bilimsel Laboratuvar Veri Stüdyosu
+                </h1>
+                <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+                    FTIR ve UV-Vis spektrumlarınızı doğrudan tarayıcınızda işleyin, pikleri tespit edin, cihaz CSV çıktılarını biçimlendirin ve yayın kalitesinde grafikler oluşturun.
+                </p>
+
+                <!-- Arama Kutusu -->
+                <div class="pt-2 max-w-md mx-auto">
+                    <div class="relative">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                        <input type="text" id="hub-search-input" placeholder="Laboratuvar modülü veya özellik ara..." 
+                               class="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                               onkeyup="filterHubCards()">
+                    </div>
+                </div>
             </div>
-            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
-                Bilimsel Analiz Araçları Hub'ı
-            </h1>
-            <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
-                Laboratuvar verilerinizi (FTIR, UV-Vis, CSV) doğrudan tarayıcınızda işleyin, görselleştirin ve yüksek kalitede grafikleştiriın. Sunucuya veri yüklemeden %100 güvenli çalışın.
-            </p>
 
-            <!-- Arama ve Filtreleme Barı -->
-            <div class="pt-4 max-w-md mx-auto">
-                <div class="relative">
-                    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
-                    <input type="text" id="search-input" placeholder="Laboratuvar aracı veya format ara..." 
-                           class="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
-                           onkeyup="filterTools()">
+            <!-- Araç Kartları Izgarası (Grid) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="hub-tools-grid">
+
+                <!-- KART 1: FTIR Spektrum Maker -->
+                <article class="hub-tool-card glass-card rounded-2xl p-6 flex flex-col justify-between group cursor-pointer" onclick="switchTab('ftir')" data-keywords="ftir ir infrared kızılötesi transmitans absorbans cm-1 dalga sayısı pik spektrum">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="p-3 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                                <i data-lucide="activity" class="w-6 h-6"></i>
+                            </div>
+                            <span class="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                                Spektroskopi
+                            </span>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-bold text-white group-hover:text-blue-300 transition-colors flex items-center justify-between">
+                                <span>FTIR Spektrum Maker</span>
+                                <i data-lucide="arrow-right" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition text-blue-400"></i>
+                            </h3>
+                            <p class="text-slate-400 text-xs mt-2 leading-relaxed">
+                                FTIR verilerinizi görselleştirin. %T ↔ A dönüşümü, gürültü azaltma, otomatik pik etiketleri ve kimyasal fonksiyonel grup eşleştirmesi.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">4000-400 cm⁻¹</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">%T ↔ Absorbans</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Pik Algılama</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-5 mt-4 border-t border-slate-800/80 flex items-center justify-between">
+                        <span class="text-xs text-blue-400 font-semibold flex items-center gap-1 group-hover:underline">
+                            <span>Modülü Başlat</span>
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                        </span>
+                    </div>
+                </article>
+
+                <!-- KART 2: UV-Vis Spektrum Maker -->
+                <article class="hub-tool-card glass-card rounded-2xl p-6 flex flex-col justify-between group cursor-pointer" onclick="switchTab('uvvis')" data-keywords="uv-vis uv vis spektrofotometre spektrum lambda max nm absorbans kromofor">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="p-3 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                                <i data-lucide="sun" class="w-6 h-6"></i>
+                            </div>
+                            <span class="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                                Spektroskopi
+                            </span>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-bold text-white group-hover:text-purple-300 transition-colors flex items-center justify-between">
+                                <span>UV-Vis Spektrum Maker</span>
+                                <i data-lucide="arrow-right" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition text-purple-400"></i>
+                            </h3>
+                            <p class="text-slate-400 text-xs mt-2 leading-relaxed">
+                                Spektrofotometre CSV verilerini grafikleyin. Çift sütun (X1,Y1,X2,Y2) ve tekil X desteği, λmax tespiti ve görünür renk spektrumu eşleştirmesi.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">200-800 nm</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">λmax Tespiti</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Renk Tayfı</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-5 mt-4 border-t border-slate-800/80 flex items-center justify-between">
+                        <span class="text-xs text-purple-400 font-semibold flex items-center gap-1 group-hover:underline">
+                            <span>Modülü Başlat</span>
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                        </span>
+                    </div>
+                </article>
+
+                <!-- KART 3: Çoklu CSV Karakter & Format Dönüştürücü -->
+                <article class="hub-tool-card glass-card rounded-2xl p-6 flex flex-col justify-between group cursor-pointer" onclick="switchTab('csv-converter')" data-keywords="csv dönüştürücü noktalı virgül karakter delimiter virgül nokta türkçe avrupa">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                                <i data-lucide="refresh-cw" class="w-6 h-6"></i>
+                            </div>
+                            <span class="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                Veri Formatı
+                            </span>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-bold text-white group-hover:text-amber-300 transition-colors flex items-center justify-between">
+                                <span>CSV Karakter Dönüştürücü</span>
+                                <i data-lucide="arrow-right" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition text-amber-400"></i>
+                            </h3>
+                            <p class="text-slate-400 text-xs mt-2 leading-relaxed">
+                                Cihaz çıktılarınızdaki ";" ayırıcılarını "," karakterine; ondalık "," karakterlerini ise "." formatına dönüştürün. Anlık önizleme & doğrudan aktarım.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">; ➔ , & , ➔ .</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Toplu ZIP</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Direkt Aktar</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-5 mt-4 border-t border-slate-800/80 flex items-center justify-between">
+                        <span class="text-xs text-amber-400 font-semibold flex items-center gap-1 group-hover:underline">
+                            <span>Modülü Başlat</span>
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                        </span>
+                    </div>
+                </article>
+
+                <!-- KART 4: CSV to XLSX (Excel) -->
+                <article class="hub-tool-card glass-card rounded-2xl p-6 flex flex-col justify-between group cursor-pointer" onclick="switchTab('xlsx-converter')" data-keywords="excel xlsx sheet tablo veri çalışma kitabı converter">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                                <i data-lucide="file-spreadsheet" class="w-6 h-6"></i>
+                            </div>
+                            <span class="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                Excel Araçları
+                            </span>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors flex items-center justify-between">
+                                <span>CSV ➔ Excel (XLSX)</span>
+                                <i data-lucide="arrow-right" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition text-emerald-400"></i>
+                            </h3>
+                            <p class="text-slate-400 text-xs mt-2 leading-relaxed">
+                                Laboratuvar CSV/TXT dosyalarını biçimlendirilmiş gerçek Excel (.xlsx) dosyalarına dönüştürün veya çoklu dosyaları tek kitapta sekmeler halinde birleştirin.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">.xlsx Çıktı</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Çoklu Sekme</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Otomatik Format</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-5 mt-4 border-t border-slate-800/80 flex items-center justify-between">
+                        <span class="text-xs text-emerald-400 font-semibold flex items-center gap-1 group-hover:underline">
+                            <span>Modülü Başlat</span>
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                        </span>
+                    </div>
+                </article>
+
+                <!-- KART 5: Bilimsel Hesaplayıcılar & Referans -->
+                <article class="hub-tool-card glass-card rounded-2xl p-6 flex flex-col justify-between group cursor-pointer" onclick="switchTab('calculators')" data-keywords="beer lambert formül hesaplama absorbans kalibrasyon eğrisi ir tablosu fonksiyonel grup birim">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="p-3 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
+                                <i data-lucide="calculator" class="w-6 h-6"></i>
+                            </div>
+                            <span class="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                                Hesaplama & Bilgi
+                            </span>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors flex items-center justify-between">
+                                <span>Hesaplayıcı & IR Tablosu</span>
+                                <i data-lucide="arrow-right" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition text-cyan-400"></i>
+                            </h3>
+                            <p class="text-slate-400 text-xs mt-2 leading-relaxed">
+                                Beer-Lambert (A=εbc) hesaplayıcısı, kalibrasyon eğrisi regresyonu, spektroskopik birim dönüştürücü ve aranabilir IR korelasyon tablosu.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Beer-Lambert</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Kalibrasyon R²</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">IR Veritabanı</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-5 mt-4 border-t border-slate-800/80 flex items-center justify-between">
+                        <span class="text-xs text-cyan-400 font-semibold flex items-center gap-1 group-hover:underline">
+                            <span>Modülü Başlat</span>
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                        </span>
+                    </div>
+                </article>
+
+            </div>
+
+            <!-- Arama Sonucu Yok -->
+            <div id="hub-no-results" class="hidden text-center py-12">
+                <i data-lucide="search-x" class="w-10 h-10 text-slate-600 mx-auto mb-3"></i>
+                <p class="text-slate-400 text-sm">Aramanızla eşleşen bir modül veya araç bulunamadı.</p>
+            </div>
+        </section>
+
+
+        <!-- ========================================== -->
+        <!-- TAB 2: FTIR SPEKTRUM ANALİZÖRÜ -->
+        <!-- ========================================== -->
+        <section id="tab-ftir" class="tab-content space-y-6">
+            <!-- Üst Başlık -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-800/80">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2.5 bg-blue-600 rounded-xl shadow-md shadow-blue-600/20">
+                        <i data-lucide="activity" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold tracking-tight text-white">FTIR Spektrum Vizüalizörü</h2>
+                        <p class="text-xs text-slate-400">Fourier Dönüşümlü Kızılötesi Spektral Veri Grafikleme ve İşlevsel Grup Analiz Stüdyosu</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- Sol Kontrol Paneli -->
+                <aside class="lg:col-span-1 flex flex-col gap-4">
+                    <!-- Dosya Yükleme Alanı -->
+                    <div class="glass-panel p-4 rounded-xl border border-slate-800 shadow-lg">
+                        <h3 class="text-xs font-semibold text-slate-200 mb-2.5 flex items-center gap-2">
+                            <i data-lucide="upload-cloud" class="w-4 h-4 text-blue-400"></i>
+                            CSV / TXT Spektrum Yükle
+                        </h3>
+                        
+                        <div id="ftir-drop-zone" class="border-2 border-dashed border-slate-700 rounded-xl p-4 text-center cursor-pointer hover:border-blue-500 hover:bg-slate-800/60 transition flex flex-col items-center justify-center">
+                            <i data-lucide="file-text" class="w-7 h-7 text-slate-400 mb-1.5"></i>
+                            <p class="text-xs text-slate-200 font-medium">Dosyaları buraya sürükleyin</p>
+                            <p class="text-[10px] text-slate-500 mt-0.5">veya tıklayıp bilgisayardan seçin</p>
+                            <input type="file" id="ftir-file-input" accept=".csv, .txt, .dat" multiple class="hidden">
+                        </div>
+
+                        <div class="mt-2.5">
+                            <button onclick="loadFTIRSampleData()" class="w-full py-2 px-3 text-xs bg-slate-800 hover:bg-slate-700 text-blue-300 rounded-lg border border-slate-700 font-medium transition flex items-center justify-center gap-1.5">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-blue-400"></i>
+                                Örnek Aspirin FTIR Spektrumu Yükle
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Görünüm & İşleme Ayarları -->
+                    <div class="glass-panel p-4 rounded-xl border border-slate-800 shadow-lg flex flex-col gap-3.5">
+                        <h3 class="text-xs font-semibold text-slate-200 border-b border-slate-800 pb-2 flex items-center gap-2">
+                            <i data-lucide="sliders" class="w-4 h-4 text-blue-400"></i>
+                            Grafik & İşleme Ayarları
+                        </h3>
+
+                        <!-- Ters X Ekseni -->
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs text-slate-300 cursor-pointer" for="ftir-invert-x">
+                                Ters X Ekseni (4000 ➔ 400 cm⁻¹)
+                            </label>
+                            <input type="checkbox" id="ftir-invert-x" checked class="w-4 h-4 accent-blue-500 rounded cursor-pointer" onchange="updateFTIRPlot()">
+                        </div>
+
+                        <!-- Y Ekseni Modu -->
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[11px] text-slate-400">Y Ekseni Birimi / Tipi</label>
+                            <select id="ftir-y-mode" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-blue-500 outline-none" onchange="processAndPlotFTIRData()">
+                                <option value="raw">Orijinal Veri (%T / Absorbans)</option>
+                                <option value="transmittance_to_absorbance">Transmitans (%T) ➔ Absorbans (A)</option>
+                                <option value="absorbance_to_transmittance">Absorbans (A) ➔ Transmitans (%T)</option>
+                            </select>
+                        </div>
+
+                        <!-- Min-Max Normalizasyonu -->
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs text-slate-300 cursor-pointer" for="ftir-normalize-y">
+                                Min-Max Normalizasyonu (0 - 1)
+                            </label>
+                            <input type="checkbox" id="ftir-normalize-y" class="w-4 h-4 accent-blue-500 rounded cursor-pointer" onchange="processAndPlotFTIRData()">
+                        </div>
+
+                        <!-- Gürültü Azaltma (Yumuşatma) -->
+                        <div class="flex flex-col gap-2 pt-2 border-t border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs text-slate-300 font-medium flex items-center gap-1.5 cursor-pointer" for="ftir-enable-smoothing">
+                                    <i data-lucide="waves" class="w-3.5 h-3.5 text-cyan-400"></i>
+                                    Gürültü Azaltma (Yumuşatma)
+                                </label>
+                                <input type="checkbox" id="ftir-enable-smoothing" class="w-4 h-4 accent-cyan-500 rounded cursor-pointer" onchange="processAndPlotFTIRData()">
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[11px] text-slate-400">Filtre Gücü:</span>
+                                <input type="range" id="ftir-smoothing-level" min="3" max="31" step="2" value="7" class="w-28 accent-cyan-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer" onchange="processAndPlotFTIRData()" oninput="document.getElementById('ftir-smoothing-val').innerText = this.value">
+                                <span id="ftir-smoothing-val" class="text-[10px] font-mono text-cyan-400 w-4 text-right">7</span>
+                            </div>
+                        </div>
+
+                        <!-- Şelale / Çoklu Spektrum Ofseti -->
+                        <div class="flex flex-col gap-2 pt-2 border-t border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-slate-300 font-medium">Yığılma / Şelale Ofseti</span>
+                                <span id="ftir-offset-val" class="text-[10px] font-mono text-blue-400">0</span>
+                            </div>
+                            <input type="range" id="ftir-stack-offset" min="0" max="50" step="5" value="0" class="w-full accent-blue-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer" onchange="processAndPlotFTIRData()" oninput="document.getElementById('ftir-offset-val').innerText = this.value">
+                        </div>
+
+                        <!-- Otomatik Pik Tespiti -->
+                        <div class="flex flex-col gap-2 pt-2 border-t border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs text-slate-300 font-medium flex items-center gap-1.5 cursor-pointer" for="ftir-show-peaks">
+                                    <i data-lucide="map-pin" class="w-3.5 h-3.5 text-amber-400"></i>
+                                    Otomatik Pik Etiketleri
+                                </label>
+                                <input type="checkbox" id="ftir-show-peaks" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" onchange="updateFTIRPlot()">
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[11px] text-slate-400">Hassasiyet:</span>
+                                <input type="range" id="ftir-peak-sensitivity" min="1" max="10" value="5" class="w-28 accent-amber-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer" onchange="updateFTIRPlot()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Yüklenen FTIR Spektrum Listesi -->
+                    <div class="glass-panel p-4 rounded-xl border border-slate-800 shadow-lg flex flex-col">
+                        <h3 class="text-xs font-semibold text-slate-200 border-b border-slate-800 pb-2 mb-2.5 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="layers" class="w-4 h-4 text-blue-400"></i>
+                                Spektrumlar (<span id="ftir-spectrum-count">0</span>)
+                            </span>
+                            <button onclick="clearAllFTIRSpectra()" class="text-[11px] text-red-400 hover:text-red-300 font-normal transition">Tümünü Sil</button>
+                        </h3>
+
+                        <div id="ftir-spectra-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            <p class="text-xs text-slate-500 italic text-center py-4">Henüz spektrum yüklenmedi.</p>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Sağ Grafik Alanı & Analiz Tablosu -->
+                <main class="lg:col-span-3 flex flex-col gap-5">
+                    <!-- Plotly Grafik Kutusu -->
+                    <div class="glass-panel p-4 rounded-xl border border-slate-800 shadow-lg relative min-h-[500px] flex flex-col">
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3 px-1 border-b border-slate-800/80 pb-3">
+                            <h3 class="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-2">
+                                <i data-lucide="line-chart" class="w-4 h-4 text-blue-400"></i>
+                                FTIR İnteraktif Spektrum Grafiği
+                            </h3>
+                            
+                            <!-- İndirme Butonları -->
+                            <div class="flex items-center gap-2">
+                                <button onclick="downloadFTIRChart('png')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition shadow-sm">
+                                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                                    <span>PNG</span>
+                                </button>
+                                <button onclick="downloadFTIRChart('svg')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition">
+                                    <i data-lucide="file-code" class="w-3.5 h-3.5 text-emerald-400"></i>
+                                    <span>SVG</span>
+                                </button>
+                                <button onclick="downloadFTIRChart('jpeg')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition">
+                                    <i data-lucide="image" class="w-3.5 h-3.5 text-amber-400"></i>
+                                    <span>JPG</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Grafik Konteyneri -->
+                        <div id="ftir-plotly-chart" class="w-full flex-1 min-h-[440px] rounded-lg"></div>
+                    </div>
+
+                    <!-- Algılanan FTIR Pik Noktaları Tablosu -->
+                    <div class="glass-panel p-4 rounded-xl border border-slate-800 shadow-lg">
+                        <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2.5">
+                            <h3 class="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-2">
+                                <i data-lucide="table" class="w-4 h-4 text-amber-400"></i>
+                                Algılanan Karakteristik Emilim / İletim Pik Noktaları
+                            </h3>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-slate-400 font-mono" id="ftir-detected-peak-count">0 pik</span>
+                                <button onclick="exportFTIRPeaksCSV()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1">
+                                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                                    <span>Tabloyu CSV İndir</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto max-h-48 overflow-y-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-900/80 text-slate-400 border-b border-slate-800 sticky top-0">
+                                        <th class="p-2">Spektrum Adı</th>
+                                        <th class="p-2">Dalga Sayısı (cm⁻¹)</th>
+                                        <th class="p-2">Şiddet Değeri</th>
+                                        <th class="p-2">Olası İşlevsel Grup / Kimyasal Açıklama</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ftir-peaks-table-body" class="divide-y divide-slate-800/60 text-slate-300">
+                                    <tr>
+                                        <td colspan="4" class="p-4 text-center text-slate-500 italic">Pik tespiti yapmak için sol panelden "Otomatik Pik Etiketleri" seçeneğini aktif edin.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </section>
+
+
+        <!-- ========================================== -->
+        <!-- TAB 3: UV-VIS SPEKTRUM ANALİZÖRÜ -->
+        <!-- ========================================== -->
+        <section id="tab-uvvis" class="tab-content space-y-6">
+            <!-- Üst Başlık -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-800/80">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2.5 bg-purple-600 rounded-xl shadow-md shadow-purple-600/20">
+                        <i data-lucide="sun" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold tracking-tight text-white">UV-Vis Spektrum Vizüalizörü</h2>
+                        <p class="text-xs text-slate-400">Spektrofotometre Veri Analizi, Çift Sütun Desteği ve λmax Spektral Eşleştirme</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- Sol Kontrol Paneli -->
+                <aside class="lg:col-span-1 flex flex-col gap-4">
+                    <!-- Dosya Yükleme -->
+                    <div class="glass-panel p-4 rounded-xl border border-slate-800 shadow-lg">
+                        <h3 class="text-xs font-semibold text-slate-200 mb-2.5 flex items-center gap-2">
+                            <i data-lucide="upload-cloud" class="w-4 h-4 text-purple-400"></i>
+                            CSV Spektrum Dosyası Yükle
+                        </h3>
+                        
+                        <div id="uvvis-drop-zone" class="border-2 border-dashed border-slate-700 rounded-xl p-4 text-center cursor-pointer hover:border-purple-500 hover:bg-slate-800/60 transition flex flex-col items-center justify-center">
+                            <i data-lucide="file-text" class="w-7 h-7 text-slate-400 mb-1.5"></i>
+                            <p class="text-xs text-slate-200 font-medium">CSV dosyanızı buraya sürükleyin</p>
+                            <p class="text-[10px] text-slate-500 mt-0.5">İkili (X1,Y1,X2,Y2...) veya tekil X desteklenir</p>
+                            <input type="file" id="uvvis-file-input" accept=".csv, .txt, .dat" multiple class="hidden">
+                        </div>
+
+                        <div class="mt-2.5">
+                            <button onclick="loadUVVisSampleData()" class="w-full py-2 px-3 text-xs bg-slate-800 hover:bg-slate-700 text-purple-300 rounded-lg border border-slate-700 font-medium transition flex items-center justify-center gap-1.5">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-400"></i>
+                                Örnek Klorofil A & B Spektrumu
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Görünüm & İşleme Ayarları -->
+                    <div class="glass-panel p-4 rounded-xl border border-slate-800 shadow-lg flex flex-col gap-3.5">
+                        <h3 class="text-xs font-semibold text-slate-200 border-b border-slate-800 pb-2 flex items-center gap-2">
+                            <i data-lucide="sliders" class="w-4 h-4 text-purple-400"></i>
+                            Grafik & Eksen Ayarları
+                        </h3>
+
+                        <!-- Ters X Ekseni -->
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs text-slate-300 cursor-pointer" for="uvvis-invert-x">
+                                Ters X Ekseni (800 ➔ 200 nm)
+                            </label>
+                            <input type="checkbox" id="uvvis-invert-x" class="w-4 h-4 accent-purple-500 rounded cursor-pointer" onchange="updateUVVisPlot()">
+                        </div>
+
+                        <!-- Y Ekseni Modu -->
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[11px] text-slate-400">Y Ekseni Birimi / Tipi</label>
+                            <select id="uvvis-y-mode" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none" onchange="processAndPlotUVVisData()">
+                                <option value="raw">Orijinal Veri (Absorbans / %T)</option>
+                                <option value="transmittance_to_absorbance">Transmitans (%T) ➔ Absorbans (A)</option>
+                                <option value="absorbance_to_transmittance">Absorbans (A) ➔ Transmitans (%T)</option>
+                            </select>
+                        </div>
+
+                        <!-- Min-Max Normalizasyon -->
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs text-slate-300 cursor-pointer" for="uvvis-normalize-y">
+                                Min-Max Normalizasyonu (0 - 1)
+                            </label>
+                            <input type="checkbox" id="uvvis-normalize-y" class="w-4 h-4 accent-purple-500 rounded cursor-pointer" onchange="processAndPlotUVVisData()">
+                        </div>
+
+                        <!-- Gürültü Azaltma (Yumuşatma) -->
+                        <div class="flex flex-col gap-2 pt-2 border-t border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs text-slate-300 font-medium flex items-center gap-1.5 cursor-pointer" for="uvvis-enable-smoothing">
+                                    <i data-lucide="waves" class="w-3.5 h-3.5 text-cyan-400"></i>
+                                    Gürültü Azaltma (Yumuşatma)
+                                </label>
+                                <input type="checkbox" id="uvvis-enable-smoothing" class="w-4 h-4 accent-cyan-500 rounded cursor-pointer" onchange="processAndPlotUVVisData()">
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[11px] text-slate-400">Filtre Gücü:</span>
+                                <input type="range" id="uvvis-smoothing-level" min="3" max="31" step="2" value="7" class="w-28 accent-cyan-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer" onchange="processAndPlotUVVisData()" oninput="document.getElementById('uvvis-smoothing-val').innerText = this.value">
+                                <span id="uvvis-smoothing-val" class="text-[10px] font-mono text-cyan-400 w-4 text-right">7</span>
+                            </div>
+                        </div>
+
+                        <!-- Şelale Ofseti -->
+                        <div class="flex flex-col gap-2 pt-2 border-t border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-slate-300 font-medium">Yığılma / Şelale Ofseti</span>
+                                <span id="uvvis-offset-val" class="text-[10px] font-mono text-purple-400">0</span>
+                            </div>
+                            <input type="range" id="uvvis-stack-offset" min="0" max="1" step="0.05" value="0" class="w-full accent-purple-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer" onchange="processAndPlotUVVisData()" oninput="document.getElementById('uvvis-offset-val').innerText = this.value">
+                        </div>
+
+                        <!-- λmax Pik Tespiti -->
+                        <div class="flex flex-col gap-2 pt-2 border-t border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs text-slate-300 font-medium flex items-center gap-1.5 cursor-pointer" for="uvvis-show-peaks">
+                                    <i data-lucide="map-pin" class="w-3.5 h-3.5 text-amber-400"></i>
+                                    λmax (Peak) Etiketleri
+                                </label>
+                                <input type="checkbox" id="uvvis-show-peaks" checked class="w-4 h-4 accent-amber-500 rounded cursor-pointer" onchange="updateUVVisPlot()">
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[11px] text-slate-400">Hassasiyet:</span>
+                                <input type="range" id="uvvis-peak-sensitivity" min="1" max="10" value="5" class="w-28 accent-amber-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer" onchange="updateUVVisPlot()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Yüklenen UV-Vis Spektrum Listesi -->
+                    <div class="glass-panel p-4 rounded-xl border border-slate-800 shadow-lg flex flex-col">
+                        <h3 class="text-xs font-semibold text-slate-200 border-b border-slate-800 pb-2 mb-2.5 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="layers" class="w-4 h-4 text-purple-400"></i>
+                                Spektrumlar (<span id="uvvis-spectrum-count">0</span>)
+                            </span>
+                            <button onclick="clearAllUVVisSpectra()" class="text-[11px] text-red-400 hover:text-red-300 font-normal transition">Tümünü Sil</button>
+                        </h3>
+
+                        <div id="uvvis-spectra-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            <p class="text-xs text-slate-500 italic text-center py-4">Henüz spektrum yüklenmedi.</p>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Sağ Grafik Alanı & Analiz Tablosu -->
+                <main class="lg:col-span-3 flex flex-col gap-5">
+                    <!-- Plotly Grafik Kutusu -->
+                    <div class="glass-panel p-4 rounded-xl border border-slate-800 shadow-lg relative min-h-[500px] flex flex-col">
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2 px-1 border-b border-slate-800/80 pb-3">
+                            <div>
+                                <h3 class="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-2">
+                                    <i data-lucide="line-chart" class="w-4 h-4 text-purple-400"></i>
+                                    UV-Vis Spektrum Grafiği
+                                </h3>
+                                <div class="visible-spectrum-bar w-48 mt-1.5" title="Görünür Işık Tayfı (380 - 750 nm)"></div>
+                            </div>
+                            
+                            <!-- İndirme Butonları -->
+                            <div class="flex items-center gap-2">
+                                <button onclick="downloadUVVisChart('png')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition shadow-sm">
+                                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                                    <span>PNG</span>
+                                </button>
+                                <button onclick="downloadUVVisChart('svg')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition">
+                                    <i data-lucide="file-code" class="w-3.5 h-3.5 text-emerald-400"></i>
+                                    <span>SVG</span>
+                                </button>
+                                <button onclick="downloadUVVisChart('jpeg')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition">
+                                    <i data-lucide="image" class="w-3.5 h-3.5 text-amber-400"></i>
+                                    <span>JPG</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Grafik Konteyneri -->
+                        <div id="uvvis-plotly-chart" class="w-full flex-1 min-h-[440px] rounded-lg"></div>
+                    </div>
+
+                    <!-- Algılanan λmax Tablosu -->
+                    <div class="glass-panel p-4 rounded-xl border border-slate-800 shadow-lg">
+                        <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2.5">
+                            <h3 class="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-2">
+                                <i data-lucide="table" class="w-4 h-4 text-amber-400"></i>
+                                Tespit Edilen λmax (Maksimum Emilim) Noktaları & Kromofor İpuçları
+                            </h3>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-slate-400 font-mono" id="uvvis-detected-peak-count">0 pik</span>
+                                <button onclick="exportUVVisPeaksCSV()" class="text-xs text-purple-400 hover:text-purple-300 font-medium flex items-center gap-1">
+                                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                                    <span>Tabloyu CSV İndir</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto max-h-48 overflow-y-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-900/80 text-slate-400 border-b border-slate-800 sticky top-0">
+                                        <th class="p-2">Spektrum Adı</th>
+                                        <th class="p-2">Dalga Boyu (λmax)</th>
+                                        <th class="p-2">Şiddet Değeri</th>
+                                        <th class="p-2">Spektral Bölge / Kromofor İpucu</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="uvvis-peaks-table-body" class="divide-y divide-slate-800/60 text-slate-300">
+                                    <tr>
+                                        <td colspan="4" class="p-4 text-center text-slate-500 italic">Pik tespiti yapmak için grafik ayarlarından "λmax Etiketleri" seçeneğini aktif edin.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </section>
+
+
+        <!-- ========================================== -->
+        <!-- TAB 4: ÇOKLU CSV KARAKTER DÖNÜŞTÜRÜCÜ -->
+        <!-- ========================================== -->
+        <section id="tab-csv-converter" class="tab-content space-y-6">
+            <!-- Üst Başlık -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-800/80">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2.5 bg-amber-600 rounded-xl shadow-md shadow-amber-600/20">
+                        <i data-lucide="refresh-cw" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold tracking-tight text-white">Çoklu CSV Karakter & Ayırıcı Dönüştürücü</h2>
+                        <p class="text-xs text-slate-400">Türkçe/Avrupa cihaz formatlarındaki <strong>;</strong> ayırıcılarını <strong>,</strong> ve <strong>,</strong> ondalıklarını <strong>.</strong> formatına toplu dönüştürün.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ayarlar ve Yükleme Kartı -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Dönüştürme Seçenekleri & Yükleme -->
+                <div class="md:col-span-1 glass-panel p-5 rounded-2xl border border-slate-800 shadow-lg space-y-4">
+                    <h3 class="text-xs font-semibold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-2">
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4 text-amber-400"></i>
+                        Dönüştürme Modu
+                    </h3>
+
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] text-slate-400">Dönüşüm Kuralı</label>
+                        <select id="csv-conv-mode" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 focus:ring-1 focus:ring-amber-500 outline-none">
+                            <option value="auto_eu_to_std">Standart TR/AB: ( ; ➔ , ) ve ( , ➔ . )</option>
+                            <option value="tab_to_comma">Sekme (Tab) ➔ Virgül (,)</option>
+                            <option value="comma_to_semicolon">Uluslararası ➔ TR/AB: ( . ➔ , ) ve ( , ➔ ; )</option>
+                            <option value="space_to_comma">Boşluklar ➔ Virgül (,)</option>
+                        </select>
+                    </div>
+
+                    <!-- Yükleme Kutusu -->
+                    <div id="csv-conv-drop-zone" class="border-2 border-dashed border-amber-500/40 rounded-xl p-6 text-center cursor-pointer hover:border-amber-500 hover:bg-amber-500/5 transition flex flex-col items-center justify-center">
+                        <i data-lucide="file-up" class="w-8 h-8 text-amber-400 mb-2"></i>
+                        <p class="text-xs text-slate-200 font-semibold">CSV veya TXT Dosyalarını Seçin</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Birden fazla dosya sürükleyip bırakabilirsiniz</p>
+                        <input type="file" id="csv-conv-file-input" accept=".csv, .txt, .dat" multiple class="hidden">
+                    </div>
+
+                    <button onclick="loadCSVConverterSampleData()" class="w-full py-2 px-3 text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-xl border border-slate-700 font-medium transition flex items-center justify-center gap-1.5">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                        Örnek Noktalı Virgüllü Dosyalar Yükle
+                    </button>
+                </div>
+
+                <!-- Dönüştürülen Dosyalar Listesi & Aksiyonlar -->
+                <div class="md:col-span-2 glass-panel p-5 rounded-2xl border border-slate-800 shadow-lg flex flex-col justify-between space-y-4 min-h-[380px]">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                            <h3 class="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-2">
+                                <i data-lucide="files" class="w-4 h-4 text-indigo-400"></i>
+                                Dönüştürülen Dosyalar
+                                <span id="csv-conv-count-badge" class="text-[10px] bg-slate-800 text-amber-300 border border-slate-700 px-2 py-0.5 rounded-full font-mono">0 Dosya</span>
+                            </h3>
+                            <button onclick="clearAllCSVConverterFiles()" class="text-xs text-red-400 hover:text-red-300 transition">Tümünü Temizle</button>
+                        </div>
+
+                        <!-- Dosya Kartları Izgarası -->
+                        <div id="csv-conv-files-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
+                            <div class="col-span-full py-10 text-center text-slate-500 italic flex flex-col items-center justify-center">
+                                <i data-lucide="folder-x" class="w-8 h-8 mb-2 opacity-40"></i>
+                                <span>Henüz dosya yüklenmedi. CSV dosyalarınızı yukarıdaki kutucuğa bırakın.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Toplu İndirme Aksiyon Barı -->
+                    <div id="csv-conv-batch-actions" class="hidden pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <p class="text-xs text-slate-400">Tüm dosyalar tarayıcınızda hazırlandı.</p>
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <button onclick="downloadAllCSVFiles()" class="flex-1 sm:flex-initial py-2 px-3 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl font-medium transition flex items-center justify-center gap-1.5">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                                <span>Tek Tek İndir</span>
+                            </button>
+                            <button onclick="downloadAllCSVAsZip()" class="flex-1 sm:flex-initial py-2 px-4 text-xs bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-semibold transition flex items-center justify-center gap-1.5 shadow-md shadow-amber-600/20">
+                                <i data-lucide="archive" class="w-3.5 h-3.5"></i>
+                                <span>Tümünü ZIP Olarak İndir</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- Araç Kartları Izgarası (Grid) -->
-        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2" id="tools-grid">
 
-            <!-- KART 1: UV-Vis Spektrum Vizüalizörü -->
-            <article class="tool-card glass-card rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden" data-keywords="uv-vis uv vis spektrofotometre spektrum lambda max nm klorofil">
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <div class="p-3 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                            <i data-lucide="sun" class="w-6 h-6"></i>
-                        </div>
-                        <span class="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
-                            Spektroskopi
-                        </span>
+        <!-- ========================================== -->
+        <!-- TAB 5: CSV TO XLSX (EXCEL) DÖNÜŞTÜRÜCÜ -->
+        <!-- ========================================== -->
+        <section id="tab-xlsx-converter" class="tab-content space-y-6">
+            <!-- Üst Başlık -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-800/80">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2.5 bg-emerald-600 rounded-xl shadow-md shadow-emerald-600/20">
+                        <i data-lucide="file-spreadsheet" class="w-6 h-6 text-white"></i>
                     </div>
-
                     <div>
-                        <h2 class="text-lg font-bold text-white group-hover:text-purple-300 transition-colors flex items-center gap-2">
-                            UV-Vis Spektrum Maker
-                            <i data-lucide="arrow-up-right" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-purple-400"></i>
-                        </h2>
-                        <p class="text-slate-400 text-xs mt-2 leading-relaxed">
-                            UV-Vis spektrofotometre CSV verilerini grafikleyin. Çift sütun desteği, otomatik $\lambda_{\max}$ tespiti ve gürültü azaltma filtresi içerir.
-                        </p>
+                        <h2 class="text-xl font-bold tracking-tight text-white">CSV ➔ Excel (.xlsx) Dönüştürücü</h2>
+                        <p class="text-xs text-slate-400">Laboratuvar CSV ve TXT dosyalarını tek tıklamayla biçimlendirilmiş Excel çalışma kitaplarına çevirin.</p>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Etiketler -->
-                    <div class="flex flex-wrap gap-1.5 pt-2">
-                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">200-800 nm</span>
-                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">λmax Tespiti</span>
-                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Gürültü Filtresi</span>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Yükleme Alanı -->
+                <div class="md:col-span-1 glass-panel p-5 rounded-2xl border border-slate-800 shadow-lg space-y-4">
+                    <h3 class="text-xs font-semibold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-2">
+                        <i data-lucide="upload-cloud" class="w-4 h-4 text-emerald-400"></i>
+                        Excel'e Çevrilecek Dosyalar
+                    </h3>
+
+                    <div id="xlsx-conv-drop-zone" class="border-2 border-dashed border-emerald-500/40 rounded-xl p-6 text-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-500/5 transition flex flex-col items-center justify-center">
+                        <i data-lucide="sheet" class="w-8 h-8 text-emerald-400 mb-2"></i>
+                        <p class="text-xs text-slate-200 font-semibold">CSV / TXT Dosyalarını Sürükleyin</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Sayısal değerler otomatik algılanır</p>
+                        <input type="file" id="xlsx-conv-file-input" accept=".csv, .txt, .dat" multiple class="hidden">
                     </div>
                 </div>
 
-                <div class="pt-6 mt-4 border-t border-slate-800/80 flex items-center justify-between">
-                    <span class="text-[11px] text-emerald-400 flex items-center gap-1.5 font-medium">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Yayında
-                    </span>
-                    <a href="https://marijuannaa.github.io/Uv-Vis-Spectrum-Maker/" target="_blank" rel="noopener noreferrer" 
-                       class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg transition-colors shadow-md shadow-purple-600/20">
-                        <span>Araca Git</span>
-                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-                    </a>
-                </div>
-            </article>
-
-            <!-- KART 2: FTIR Spektrum Vizüalizörü -->
-            <article class="tool-card glass-card rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden" data-keywords="ftir ir infrared kızılötesi transmitans absorbans cm-1">
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <div class="p-3 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                            <i data-lucide="activity" class="w-6 h-6"></i>
-                        </div>
-                        <span class="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                            Spektroskopi
-                        </span>
-                    </div>
-
+                <!-- Excel Kuyruğu & İndirme Seçenekleri -->
+                <div class="md:col-span-2 glass-panel p-5 rounded-2xl border border-slate-800 shadow-lg flex flex-col justify-between space-y-4 min-h-[380px]">
                     <div>
-                        <h2 class="text-lg font-bold text-white group-hover:text-blue-300 transition-colors flex items-center gap-2">
-                            FTIR Spektrum Maker
-                            <i data-lucide="arrow-up-right" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-blue-400"></i>
-                        </h2>
-                        <p class="text-slate-400 text-xs mt-2 leading-relaxed">
-                            Fourier transform kızılötesi (FTIR) spektral verilerinizi görselleştirin. Transmitans (%T) - Absorbans dönüşümü ve işlevsel grup tespiti.
-                        </p>
-                    </div>
-
-                    <!-- Etiketler -->
-                    <div class="flex flex-wrap gap-1.5 pt-2">
-                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">4000-400 cm⁻¹</span>
-                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">%T ↔ A Dönüşüm</span>
-                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Grup Analizi</span>
-                    </div>
-                </div>
-
-                <div class="pt-6 mt-4 border-t border-slate-800/80 flex items-center justify-between">
-                    <span class="text-[11px] text-emerald-400 flex items-center gap-1.5 font-medium">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Yayında
-                    </span>
-                    <a href="https://marijuannaa.github.io/FTIR-Spectrum-Maker/" target="_blank" rel="noopener noreferrer" 
-                       class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg transition-colors shadow-md shadow-blue-600/20">
-                        <span>Araca Git</span>
-                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-                    </a>
-                </div>
-            </article>
-
-            <!-- KART 3: CSV to XLSX Converter -->
-            <article class="tool-card glass-card rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden" data-keywords="csv xlsx excel dönüştürücü converter tablo veri txt dat">
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <div class="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                            <i data-lucide="file-spreadsheet" class="w-6 h-6"></i>
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                            <h3 class="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-2">
+                                <i data-lucide="file-check" class="w-4 h-4 text-emerald-400"></i>
+                                Excel Dosya Kuyruğu
+                                <span id="xlsx-conv-count-badge" class="text-[10px] bg-slate-800 text-emerald-300 border border-slate-700 px-2 py-0.5 rounded-full font-mono">0 Dosya</span>
+                            </h3>
+                            <button onclick="clearAllXLSXQueue()" class="text-xs text-red-400 hover:text-red-300 transition">Tümünü Temizle</button>
                         </div>
-                        <span class="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                            Veri Araçları
-                        </span>
+
+                        <!-- Dosya Listesi -->
+                        <div id="xlsx-conv-files-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
+                            <div class="col-span-full py-10 text-center text-slate-500 italic flex flex-col items-center justify-center">
+                                <i data-lucide="sheet" class="w-8 h-8 mb-2 opacity-40"></i>
+                                <span>Henüz Excel'e dönüştürülecek dosya eklenmedi.</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div>
-                        <h2 class="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors flex items-center gap-2">
-                            CSV to XLSX Converter
-                            <i data-lucide="arrow-up-right" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-emerald-400"></i>
-                        </h2>
-                        <p class="text-slate-400 text-xs mt-2 leading-relaxed">
-                            Laboratuvar cihazlarından alınan karmaşık CSV veya TXT verilerini hızlı ve biçimlendirilmiş biçimde Excel (.xlsx) dosyalarına dönüştürün.
-                        </p>
-                    </div>
-
-                    <!-- Etiketler -->
-                    <div class="flex flex-wrap gap-1.5 pt-2">
-                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">CSV / TXT / DAT</span>
-                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Excel Formatı</span>
-                        <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">Toplu Dönüştürme</span>
+                    <!-- Excel Toplu İndirme Aksiyonları -->
+                    <div id="xlsx-conv-actions" class="hidden pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <button onclick="downloadCombinedMasterWorkbook()" class="w-full sm:w-auto py-2.5 px-4 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20">
+                            <i data-lucide="layers" class="w-4 h-4"></i>
+                            <span>Tümünü Tek Excel Kitabında Birleştir (Çoklu Sekme)</span>
+                        </button>
+                        <button onclick="downloadAllXLSXAsZip()" class="w-full sm:w-auto py-2.5 px-3.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl font-medium transition flex items-center justify-center gap-1.5">
+                            <i data-lucide="archive" class="w-3.5 h-3.5"></i>
+                            <span>Ayrı Ayrı XLSX (ZIP)</span>
+                        </button>
                     </div>
                 </div>
-
-                <div class="pt-6 mt-4 border-t border-slate-800/80 flex items-center justify-between">
-                    <span class="text-[11px] text-emerald-400 flex items-center gap-1.5 font-medium">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Yayında
-                    </span>
-                    <a href="https://marijuannaa.github.io/Csv-to-xlsx-converter/" target="_blank" rel="noopener noreferrer" 
-                       class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg transition-colors shadow-md shadow-emerald-600/20">
-                        <span>Araca Git</span>
-                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-                    </a>
-                </div>
-            </article>
-
+            </div>
         </section>
 
-        <!-- Arama Sonucu Bulunamadı Mesajı -->
-        <div id="no-results" class="hidden text-center py-12">
-            <i data-lucide="search-x" class="w-10 h-10 text-slate-600 mx-auto mb-3"></i>
-            <p class="text-slate-400 text-sm">Aramanızla eşleşen bir laboratuvar aracı bulunamadı.</p>
-        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 6: HESAPLAYICILAR & REFERANS KÜTÜPHANESİ -->
+        <!-- ========================================== -->
+        <section id="tab-calculators" class="tab-content space-y-6">
+            <!-- Üst Başlık -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-800/80">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2.5 bg-cyan-600 rounded-xl shadow-md shadow-cyan-600/20">
+                        <i data-lucide="calculator" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold tracking-tight text-white">Bilimsel Hesaplayıcılar & Referans Kütüphanesi</h2>
+                        <p class="text-xs text-slate-400">Beer-Lambert Kanunu, Doğrusal Regresyon Kalibrasyonu, Spektroskopi Birim Dönüşümü ve IR Veritabanı</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hesaplayıcılar Izgarası -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                <!-- 1. BEER-LAMBERT HESAPLAYICISI -->
+                <div class="glass-panel p-5 rounded-2xl border border-slate-800 shadow-lg space-y-4">
+                    <h3 class="text-sm font-semibold text-white flex items-center justify-between border-b border-slate-800 pb-2.5">
+                        <span class="flex items-center gap-2">
+                            <i data-lucide="flask-round" class="w-4 h-4 text-cyan-400"></i>
+                            Beer-Lambert Kanunu (A = ε · b · c)
+                        </span>
+                        <span class="text-[10px] text-cyan-400 font-mono bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/40">Spektrofotometri</span>
+                    </h3>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] text-slate-400">Hesaplanacak Değer</label>
+                            <select id="bl-calc-target" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 mt-1 focus:ring-1 focus:ring-cyan-500 outline-none">
+                                <option value="A">Absorbans (A)</option>
+                                <option value="c">Konsantrasyon (c)</option>
+                                <option value="eps">Molar Absorptivite (ε)</option>
+                                <option value="b">Işık Yolu Uzunluğu (b)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400">Absorbans (A)</label>
+                            <input type="number" id="bl-absorbance" step="any" placeholder="örn: 0.742" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 mt-1 focus:ring-1 focus:ring-cyan-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400">Molar Absorptivite ε (L·mol⁻¹·cm⁻¹)</label>
+                            <input type="number" id="bl-epsilon" step="any" placeholder="örn: 14200" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 mt-1 focus:ring-1 focus:ring-cyan-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400">Küvet Işık Yolu b (cm)</label>
+                            <input type="number" id="bl-pathlength" value="1.0" step="any" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 mt-1 focus:ring-1 focus:ring-cyan-500 outline-none">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-[11px] text-slate-400">Konsantrasyon c (Molar / mol·L⁻¹)</label>
+                            <input type="number" id="bl-concentration" step="any" placeholder="örn: 0.000052" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 mt-1 focus:ring-1 focus:ring-cyan-500 outline-none">
+                        </div>
+                    </div>
+
+                    <button onclick="calculateBeerLambert()" class="w-full py-2 px-3 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-semibold transition flex items-center justify-center gap-1.5 shadow-md shadow-cyan-600/20">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                        <span>Hesapla</span>
+                    </button>
+
+                    <div id="bl-result-box" class="hidden p-3 bg-slate-900/90 border border-cyan-500/30 rounded-xl text-center">
+                        <span id="bl-result-text" class="text-xs text-cyan-300 font-mono"></span>
+                    </div>
+                </div>
+
+                <!-- 2. BİRİM DÖNÜŞTÜRÜCÜSÜ -->
+                <div class="glass-panel p-5 rounded-2xl border border-slate-800 shadow-lg space-y-4">
+                    <h3 class="text-sm font-semibold text-white flex items-center justify-between border-b border-slate-800 pb-2.5">
+                        <span class="flex items-center gap-2">
+                            <i data-lucide="scale" class="w-4 h-4 text-indigo-400"></i>
+                            Spektroskopi Birim Dönüştürücü
+                        </span>
+                        <span class="text-[10px] text-indigo-400 font-mono bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/40">E = h·ν = hc/λ</span>
+                    </h3>
+
+                    <div class="space-y-2.5 text-xs">
+                        <div>
+                            <label class="text-[11px] text-slate-400">Dalga Boyu (nm)</label>
+                            <input type="number" id="unit-nm" placeholder="örn: 500" oninput="convertSpectroscopyUnits('nm')" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 mt-0.5 focus:ring-1 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400">Dalga Sayısı (cm⁻¹)</label>
+                            <input type="number" id="unit-cm1" placeholder="örn: 20000" oninput="convertSpectroscopyUnits('cm1')" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 mt-0.5 focus:ring-1 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="text-[11px] text-slate-400">Foton Enerjisi (eV)</label>
+                                <input type="number" id="unit-ev" placeholder="eV" oninput="convertSpectroscopyUnits('ev')" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 mt-0.5 focus:ring-1 focus:ring-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[11px] text-slate-400">Frekans (THz)</label>
+                                <input type="number" id="unit-thz" placeholder="THz" oninput="convertSpectroscopyUnits('thz')" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 mt-0.5 focus:ring-1 focus:ring-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[11px] text-slate-400">Molar Enerji (kJ/mol)</label>
+                                <input type="number" id="unit-kjmol" placeholder="kJ/mol" readonly class="w-full bg-slate-900/50 border border-slate-800 text-xs text-indigo-300 font-mono rounded-lg p-2 mt-0.5 outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. KALİBRASYON EĞRİSİ & REGRESYON -->
+                <div class="lg:col-span-2 glass-panel p-5 rounded-2xl border border-slate-800 shadow-lg space-y-4">
+                    <h3 class="text-sm font-semibold text-white flex items-center justify-between border-b border-slate-800 pb-2.5">
+                        <span class="flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
+                            Doğrusal Regresyon & Kalibrasyon Eğrisi Analizi
+                        </span>
+                        <span class="text-[10px] text-emerald-400 font-mono bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">En Küçük Kareler</span>
+                    </h3>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                        <div class="space-y-3">
+                            <div>
+                                <label class="text-[11px] text-slate-400">Standart Veri Çiftleri (Her satıra: Konsantrasyon, Absorbans)</label>
+                                <textarea id="cal-data-input" rows="5" placeholder="0.0, 0.000&#10;10.0, 0.185&#10;20.0, 0.372&#10;30.0, 0.548&#10;40.0, 0.730" class="w-full bg-slate-900 border border-slate-700 text-xs font-mono text-slate-200 rounded-xl p-2.5 mt-1 focus:ring-1 focus:ring-emerald-500 outline-none">0.0, 0.000
+10.0, 0.185
+20.0, 0.372
+30.0, 0.548
+40.0, 0.730</textarea>
+                            </div>
+
+                            <div>
+                                <label class="text-[11px] text-slate-400">Bilinmeyen Numune Absorbansı (Opsiyonel)</label>
+                                <input type="number" id="cal-unknown-abs" step="any" placeholder="örn: 0.465" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 mt-1 focus:ring-1 focus:ring-emerald-500 outline-none">
+                            </div>
+
+                            <button onclick="calculateCalibrationCurve()" class="w-full py-2 px-3 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20">
+                                <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                                <span>Kalibrasyon Eğrisini Hesapla</span>
+                            </button>
+
+                            <div id="cal-regression-summary" class="p-3 bg-slate-900/90 border border-emerald-500/30 rounded-xl">
+                                <p class="text-xs text-slate-400 italic">Eğriyi çizdirmek için yukarıdaki butona tıklayın.</p>
+                            </div>
+                        </div>
+
+                        <!-- Mini Kalibrasyon Grafiği -->
+                        <div class="h-64 sm:h-auto rounded-xl border border-slate-800 bg-slate-950/50 p-2 flex items-center justify-center">
+                            <div id="calibration-plot" class="w-full h-full min-h-[220px]"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. İNTERAKTİF IR KORELASYON VERİTABANI -->
+                <div class="lg:col-span-2 glass-panel p-5 rounded-2xl border border-slate-800 shadow-lg space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-800 pb-2.5">
+                        <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                            <i data-lucide="book-open" class="w-4 h-4 text-amber-400"></i>
+                            İnteraktif IR Titreşim & Karakteristik Bant Korelasyon Tablosu
+                        </h3>
+                        <div class="relative w-full sm:w-64">
+                            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                            <input type="text" id="ir-table-search" placeholder="Bağ veya fonksiyonel grup ara..." onkeyup="filterIRTable()" class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg pl-8 pr-3 py-1.5 outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-72 overflow-y-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-900/80 text-slate-400 border-b border-slate-800 sticky top-0">
+                                    <th class="p-2.5">Frekans Aralığı</th>
+                                    <th class="p-2.5">Bağ / Titreşim Modu</th>
+                                    <th class="p-2.5">Titreşim Tipi</th>
+                                    <th class="p-2.5">Bant Şiddeti & Şekli</th>
+                                    <th class="p-2.5">Fonksiyonel Grup</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ir-table-body" class="divide-y divide-slate-800/60">
+                                <!-- JS Tarafından Doldurulur -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
 
     </main>
 
-    <!-- Footer / Alt Bilgi -->
-    <footer class="relative z-10 border-t border-slate-800/80 bg-slate-900/40 mt-auto py-6">
-        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <p>© 2026 Dijital Laboratuvar — <a href="https://github.com/marijuannaa" class="text-slate-400 hover:underline">@marijuannaa</a></p>
-            <p class="flex items-center gap-1 text-slate-400">
+    <!-- CSV Canlı Önizleme Modalı -->
+    <div id="csv-preview-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden items-center justify-center p-4 animate-fade-in">
+        <div class="glass-panel w-full max-w-4xl max-h-[85vh] rounded-2xl border border-slate-700 shadow-2xl flex flex-col overflow-hidden">
+            <!-- Modal Başlık -->
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="file-diff" class="w-5 h-5 text-amber-400"></i>
+                    <h3 id="csv-preview-modal-title" class="text-xs sm:text-sm font-semibold text-white truncate max-w-lg">Dosya Önizleme</h3>
+                </div>
+                <button onclick="closeCSVPreviewModal()" class="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Modal İçerik (Orijinal vs Dönüştürülmüş Yan Yana) -->
+            <div class="p-4 overflow-y-auto flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h4 class="text-xs font-semibold text-red-400 mb-1.5 flex items-center gap-1">
+                        <i data-lucide="file-minus" class="w-3.5 h-3.5"></i>
+                        Orijinal İçerik (İlk 20 Satır)
+                    </h4>
+                    <pre id="csv-preview-original" class="bg-slate-900/90 p-3 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300 overflow-x-auto max-h-96 whitespace-pre"></pre>
+                </div>
+                <div>
+                    <h4 class="text-xs font-semibold text-emerald-400 mb-1.5 flex items-center gap-1">
+                        <i data-lucide="file-check-2" class="w-3.5 h-3.5"></i>
+                        Dönüştürülmüş İçerik (İlk 20 Satır)
+                    </h4>
+                    <pre id="csv-preview-converted" class="bg-slate-900/90 p-3 rounded-xl border border-emerald-500/20 text-[11px] font-mono text-emerald-300 overflow-x-auto max-h-96 whitespace-pre"></pre>
+                </div>
+            </div>
+
+            <!-- Modal Alt Bilgi -->
+            <div class="p-3 border-t border-slate-800 bg-slate-900/40 flex justify-end">
+                <button onclick="closeCSVPreviewModal()" class="py-1.5 px-4 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-medium transition">
+                    Kapat
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Bildirim Toast Kutusu -->
+    <div id="global-toast" class="fixed bottom-5 right-5 bg-slate-900 border border-slate-700 text-slate-200 text-xs px-4 py-3 rounded-xl shadow-2xl translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2.5 z-50 pointer-events-none">
+        <i id="global-toast-icon" data-lucide="info" class="w-4 h-4 text-indigo-400 shrink-0"></i>
+        <span id="global-toast-message">Bildirim mesajı</span>
+    </div>
+
+    <!-- Alt Bilgi / Footer -->
+    <footer class="relative z-10 border-t border-slate-800/80 bg-slate-900/50 mt-auto py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <p>© 2026 Dijital Laboratuvar — <a href="https://github.com/marijuannaa" target="_blank" class="text-slate-400 hover:text-white transition underline">@marijuannaa</a></p>
+            <p class="flex items-center gap-1.5 text-slate-400">
                 <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
-                Tüm veri işlemleri %100 yerel (istemci taraflı) olarak gerçekleşir.
+                Tüm veri hesaplamaları ve görselleştirmeler %100 yerel (istemci tarafında) çalışır.
             </p>
         </div>
     </footer>
 
-    <!-- JS Mantığı -->
-    <script>
-        // Lucide Simgelerini Yükleme
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-        });
-
-        // Araç Filtreleme Arama Fonksiyonu
-        function filterTools() {
-            const query = document.getElementById('search-input').value.toLowerCase().trim();
-            const cards = document.querySelectorAll('.tool-card');
-            let visibleCount = 0;
-
-            cards.forEach(card => {
-                const keywords = card.getAttribute('data-keywords') || '';
-                const text = card.innerText.toLowerCase();
-
-                if (text.includes(query) || keywords.includes(query)) {
-                    card.classList.remove('hidden');
-                    visibleCount++;
-                } else {
-                    card.classList.add('hidden');
-                }
-            });
-
-            const noResultsEl = document.getElementById('no-results');
-            if (visibleCount === 0) {
-                noResultsEl.classList.remove('hidden');
-            } else {
-                noResultsEl.classList.add('hidden');
-            }
-        }
-    </script>
+    <!-- Uygulama Betikleri -->
+    <script src="js/app.js"></script>
+    <script src="js/ftir.js"></script>
+    <script src="js/uvvis.js"></script>
+    <script src="js/csv-converter.js"></script>
+    <script src="js/xlsx-converter.js"></script>
+    <script src="js/calculators.js"></script>
 </body>
 </html>

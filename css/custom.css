@@ -1,0 +1,166 @@
+/* Dijital Laboratuvar - Özel Stiller & Animasyonlar */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+    font-family: var(--font-sans);
+}
+
+code, pre, .font-mono {
+    font-family: var(--font-mono);
+}
+
+/* Glassmorphism Kartları */
+.glass-panel {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-subtle {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-card {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 12px 32px -10px rgba(79, 70, 229, 0.25);
+}
+
+/* Sürükle Bırak Vurgusu */
+.drag-over {
+    border-color: #6366f1 !important;
+    background-color: rgba(99, 102, 241, 0.12) !important;
+    transform: scale(1.01);
+}
+
+/* Plotly Responsive ve Kenar Yuvarlama */
+.js-plotly-plot .plotly .main-svg {
+    border-radius: 0.75rem;
+}
+
+.js-plotly-plot .plotly .modebar {
+    background: rgba(15, 23, 42, 0.7) !important;
+    border-radius: 8px !important;
+    padding: 2px 6px !important;
+}
+
+/* Özel İnce Kaydırma Çubuğu */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(71, 85, 105, 0.6);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.6);
+}
+
+/* Animasyonlar */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-glow {
+    animation: pulseGlow 4s ease-in-out infinite;
+}
+
+/* Sekme Geçişleri */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* Dosya Karakter Kartı */
+.file-card-preview {
+    transition: all 0.2s ease;
+}
+
+.file-card-preview:hover {
+    transform: translateY(-2px);
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+/* Renk Seçici Düzenlemesi */
+input[type="color"] {
+    -webkit-appearance: none;
+    border: none;
+    cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+/* Slider Özelleştirmeleri */
+input[type="range"] {
+    accent-color: #6366f1;
+}
+
+/* Dalga Boyu Görsel Spektrum Çubuğu */
+.visible-spectrum-bar {
+    background: linear-gradient(to right, 
+        #4c1d95 0%,   /* ~380-400 nm Mor */
+        #2563eb 20%,  /* ~450 nm Mavi */
+        #06b6d4 35%,  /* ~490 nm Camgöbeği */
+        #10b981 50%,  /* ~530 nm Yeşil */
+        #eab308 65%,  /* ~580 nm Sarı */
+        #f97316 80%,  /* ~620 nm Turuncu */
+        #ef4444 100%  /* ~700-750 nm Kırmızı */
+    );
+    height: 6px;
+    border-radius: 9999px;
+}
