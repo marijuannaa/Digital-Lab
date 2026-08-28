@@ -538,3 +538,413 @@ function loadFTIRSampleData() {
     processAndPlotFTIRData();
     showToast('Örnek Aspirin FTIR spektrumu yüklendi!', 'success');
 }
+
+/* ========================================================================= */
+/* REAL-TIME FTIR KİNETİK & % DÖNÜŞÜM (% CONVERSION) ANALİZ MOTORU           */
+/* ========================================================================= */
+
+let ftirKineticsRecords = []; // { time, transmittance, absorbance, conversion }
+let ftirKineticsA0 = null;
+
+// Kinetik Bölümünü Göster / Gizle
+function toggleFTIRKinetics(enable) {
+    const section = document.getElementById('ftir-kinetics-section');
+    if (!section) return;
+
+    if (enable) {
+        section.classList.remove('hidden');
+        initFTIRKineticsPlotly();
+        if (ftirKineticsRecords.length === 0) {
+            loadFTIRKineticsSampleData();
+        } else {
+            processAndPlotKinetics();
+        }
+        setTimeout(() => {
+            Plotly.Plots.resize('ftir-kinetics-plotly-chart');
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+        showToast('Real-Time Kinetik ve % Dönüşüm Analizi aktif edildi!', 'info');
+    } else {
+        section.classList.add('hidden');
+        showToast('Kinetik analiz bölümü gizlendi.');
+    }
+}
+
+function initFTIRKineticsPlotly() {
+    const chartDiv = document.getElementById('ftir-kinetics-plotly-chart');
+    if (!chartDiv) return;
+
+    const layout = getFTIRKineticsPlotlyLayout();
+    const config = {
+        responsive: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+        toImageButtonOptions: {
+            format: 'png',
+            filename: 'ftir_reaksiyon_kinetigi_donusum',
+            height: 900,
+            width: 1600,
+            scale: 2
+        }
+    };
+
+    Plotly.newPlot('ftir-kinetics-plotly-chart', [], layout, config);
+}
+
+function getFTIRKineticsPlotlyLayout() {
+    const targetWavenumber = document.getElementById('kinetics-target-wavenumber')?.value || '810';
+
+    return {
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(15, 23, 42, 0.65)',
+        margin: { l: 65, r: 65, t: 40, b: 65 },
+        showlegend: true,
+        legend: {
+            x: 0.02,
+            y: 0.98,
+            font: { color: '#94a3b8', size: 11 },
+            bgcolor: 'rgba(30, 41, 59, 0.85)',
+            bordercolor: 'rgba(255, 255, 255, 0.1)',
+            borderwidth: 1
+        },
+        xaxis: {
+            title: { text: 'Reaksiyon Süresi (Zaman, t) [saniye]', font: { color: '#cbd5e1', size: 13, family: 'Inter' } },
+            gridcolor: 'rgba(51, 65, 85, 0.6)',
+            zerolinecolor: 'rgba(71, 85, 105, 0.8)',
+            tickfont: { color: '#94a3b8', family: 'Inter' }
+        },
+        yaxis: {
+            title: { text: `% Dönüşüm (% Conversion @ ${targetWavenumber} cm⁻¹)`, font: { color: '#10b981', size: 13, family: 'Inter' } },
+            gridcolor: 'rgba(51, 65, 85, 0.6)',
+            zerolinecolor: 'rgba(71, 85, 105, 0.8)',
+            tickfont: { color: '#10b981', family: 'Inter' },
+            range: [-5, 105]
+        },
+        yaxis2: {
+            title: { text: `Absorbans (A_t @ ${targetWavenumber} cm⁻¹)`, font: { color: '#38bdf8', size: 13, family: 'Inter' } },
+            overlaying: 'y',
+            side: 'right',
+            gridcolor: 'transparent',
+            tickfont: { color: '#38bdf8', family: 'Inter' },
+            showgrid: false
+        },
+        hovermode: 'x unified'
+    };
+}
+
+// Kinetik Verilerini Hesaplama ve Grafiğe Çizme
+function processAndPlotKinetics() {
+    if (ftirKineticsRecords.length === 0) return;
+
+    // Verileri zamana göre sırala
+    ftirKineticsRecords.sort((a, b) => a.time - b.time);
+
+    // Başlangıç A0 Absorbansını Belirle
+    const manualA0Input = parseFloat(document.getElementById('kinetics-manual-a0')?.value);
+    if (!isNaN(manualA0Input) && manualA0Input > 0) {
+        ftirKineticsA0 = manualA0Input;
+    } else {
+        ftirKineticsA0 = ftirKineticsRecords[0].absorbance;
+    }
+
+    if (ftirKineticsA0 <= 0) ftirKineticsA0 = 0.0001;
+
+    // Her satır için Dönüşüm Hesapla: % Conversion = ((A0 - At) / A0) * 100
+    ftirKineticsRecords.forEach(rec => {
+        // Eğer transmitans verilmişse ve absorbans yoksa: At = 2 - log10(%T)
+        if ((rec.absorbance === undefined || isNaN(rec.absorbance)) && rec.transmittance !== undefined) {
+            let t = Math.max(0.0001, Math.min(100, rec.transmittance));
+            rec.absorbance = 2 - Math.log10(t);
+        } else if (rec.transmittance === undefined && rec.absorbance !== undefined) {
+            // Absorbans -> Transmitans: %T = 10^(2 - A)
+            rec.transmittance = Math.pow(10, 2 - rec.absorbance);
+        }
+
+        // Formül: % Conversion = ((A0 - At) / A0) * 100
+        const conv = ((ftirKineticsA0 - rec.absorbance) / ftirKineticsA0) * 100;
+        rec.conversion = Math.max(0, conv); // Negatif sapmaları sıfıra sabitle
+    });
+
+    // Metrikleri Hesapla
+    const times = ftirKineticsRecords.map(r => r.time);
+    const conversions = ftirKineticsRecords.map(r => r.conversion);
+    const absorbances = ftirKineticsRecords.map(r => r.absorbance);
+
+    const maxConv = Math.max(...conversions);
+    const halfMaxConv = maxConv / 2;
+
+    // t_50% interpolasyonu (Dönüşümün yarısına ulaştığı zaman)
+    let t50 = null;
+    for (let i = 0; i < conversions.length - 1; i++) {
+        if (conversions[i] <= halfMaxConv && conversions[i + 1] >= halfMaxConv) {
+            const t1 = times[i], t2 = times[i + 1];
+            const c1 = conversions[i], c2 = conversions[i + 1];
+            if (c2 !== c1) {
+                t50 = t1 + (halfMaxConv - c1) * (t2 - t1) / (c2 - c1);
+            } else {
+                t50 = t1;
+            }
+            break;
+        }
+    }
+
+    // Metrik Kartlarını Güncelle
+    const metricMaxConv = document.getElementById('kinetics-metric-max-conv');
+    const metricA0 = document.getElementById('kinetics-metric-a0');
+    const metricT50 = document.getElementById('kinetics-metric-t50');
+
+    if (metricMaxConv) metricMaxConv.innerText = `%${maxConv.toFixed(2)}`;
+    if (metricA0) metricA0.innerText = `${ftirKineticsA0.toFixed(4)}`;
+    if (metricT50) metricT50.innerText = t50 !== null ? `${t50.toFixed(1)} s` : '-';
+
+    // Plotly Çizimi
+    const traces = [
+        {
+            x: times,
+            y: conversions,
+            mode: 'lines+markers',
+            name: '% Dönüşüm (% Conversion)',
+            line: { color: '#10b981', width: 2.5, shape: 'spline' },
+            marker: { color: '#10b981', size: 6 }
+        },
+        {
+            x: times,
+            y: absorbances,
+            mode: 'lines',
+            name: 'Pik Absorbansı (A_t)',
+            yaxis: 'y2',
+            line: { color: '#38bdf8', width: 2, dash: 'dot' }
+        }
+    ];
+
+    const layout = getFTIRKineticsPlotlyLayout();
+    Plotly.react('ftir-kinetics-plotly-chart', traces, layout);
+
+    // Kinetik Tablosunu Doldur
+    updateFTIRKineticsTable();
+}
+
+function updateFTIRKineticsTable() {
+    const tableBody = document.getElementById('ftir-kinetics-table-body');
+    const rowCountEl = document.getElementById('ftir-kinetics-row-count');
+    if (!tableBody) return;
+
+    if (rowCountEl) rowCountEl.innerText = `${ftirKineticsRecords.length} veri noktası`;
+
+    if (ftirKineticsRecords.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500 italic">Kinetik veri bulunamadı.</td></tr>`;
+        return;
+    }
+
+    tableBody.innerHTML = ftirKineticsRecords.map((r, idx) => `
+        <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/80 text-xs">
+            <td class="p-2 font-mono text-slate-300 font-medium">${r.time.toFixed(1)} s</td>
+            <td class="p-2 font-mono text-cyan-300">${r.transmittance !== undefined ? r.transmittance.toFixed(2) + '%' : '-'}</td>
+            <td class="p-2 font-mono text-sky-300">${r.absorbance.toFixed(4)}</td>
+            <td class="p-2 font-mono text-emerald-400 font-bold">%${r.conversion.toFixed(2)}</td>
+        </tr>
+    `).join('');
+}
+
+// Örnek Akrilat Fotopolimerizasyonu Gerçekçi Kinetik Verisi (810 cm⁻¹ Çift Bağ Piki)
+function loadFTIRKineticsSampleData() {
+    ftirKineticsRecords = [];
+
+    // Örnek: t=0 anında %T0 = 66.25% (A0 = 2 - log10(66.25) ≈ 0.1788)
+    const timeSteps = [0, 2, 4, 6, 8, 10, 15, 20, 30, 45, 60, 90, 120, 150, 180];
+    const initialT = 66.25;
+    const initialA = 2 - Math.log10(initialT); // ~0.1788
+
+    timeSteps.forEach(t => {
+        if (t === 0) {
+            ftirKineticsRecords.push({
+                time: t,
+                transmittance: initialT,
+                absorbance: initialA,
+                conversion: 0.0
+            });
+        } else {
+            // Sigmoid fotopolimerizasyon eğrisi simülasyonu
+            const plateau = 0.88; // %88 nihai dönüşüm
+            const k = 0.08; // Reaksiyon hız sabiti
+            const t0 = 8; // İndüksiyon periyodu
+            const simulatedConv = plateau / (1 + Math.exp(-k * (t - t0)));
+
+            // At = A0 * (1 - Conv)
+            const at = initialA * (1 - simulatedConv) + (Math.random() - 0.5) * 0.002;
+            const boundedAt = Math.max(0.01, at);
+            const tt = Math.pow(10, 2 - boundedAt);
+
+            ftirKineticsRecords.push({
+                time: t,
+                transmittance: tt,
+                absorbance: boundedAt,
+                conversion: simulatedConv * 100
+            });
+        }
+    });
+
+    const wnInput = document.getElementById('kinetics-target-wavenumber');
+    if (wnInput) wnInput.value = '810';
+
+    const a0Input = document.getElementById('kinetics-manual-a0');
+    if (a0Input) a0Input.value = initialA.toFixed(4);
+
+    processAndPlotKinetics();
+    showToast('Örnek Akrilat Fotopolimerizasyon Kinetik Verisi (810 cm⁻¹) yüklendi!', 'success');
+}
+
+// Kinetik CSV Dosyası Yükleme (Time, %T veya Time, A)
+function handleKineticsCSVUpload(files) {
+    const file = files[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+        skipEmptyLines: true,
+        dynamicTyping: true,
+        complete: (results) => {
+            const rows = results.data;
+            if (!rows || rows.length < 2) {
+                showToast('Geçerli kinetik satır verisi bulunamadı.', 'error');
+                return;
+            }
+
+            ftirKineticsRecords = [];
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length < 2) continue;
+
+                const tVal = parseFloat(row[0]);
+                const sigVal = parseFloat(row[1]);
+
+                if (!isNaN(tVal) && !isNaN(sigVal)) {
+                    // Sinyalin 1'den büyük olması durumunda %T varsay
+                    const isT = sigVal > 2.5; 
+                    if (isT) {
+                        const abs = 2 - Math.log10(Math.max(0.001, sigVal));
+                        ftirKineticsRecords.push({ time: tVal, transmittance: sigVal, absorbance: abs, conversion: 0 });
+                    } else {
+                        const t = Math.pow(10, 2 - sigVal);
+                        ftirKineticsRecords.push({ time: tVal, transmittance: t, absorbance: sigVal, conversion: 0 });
+                    }
+                }
+            }
+
+            if (ftirKineticsRecords.length > 0) {
+                processAndPlotKinetics();
+                showToast(`"${file.name}" dosyasından ${ftirKineticsRecords.length} kinetik noktası yüklendi!`, 'success');
+            } else {
+                showToast('CSV içinde sayısal zaman ve sinyal verisi bulunamadı.', 'error');
+            }
+        },
+        error: (err) => {
+            showToast(`Dosya okunurken hata: ${err.message}`, 'error');
+        }
+    });
+}
+
+// Yüklenmiş Çoklu FTIR Spektrumlarından Belirli Dalga Sayısını Çekme
+function extractKineticsFromSpectra() {
+    if (ftirSpectraList.length < 2) {
+        showToast('Spektrumlardan kinetik çıkarmak için en az 2 FTIR spektrumu yüklemelisiniz.', 'warning');
+        return;
+    }
+
+    const targetWn = parseFloat(document.getElementById('kinetics-target-wavenumber')?.value || '810');
+    ftirKineticsRecords = [];
+
+    ftirSpectraList.forEach((spec, index) => {
+        // İsimdeki süreyi tahmin etmeye çalış (örn: Sample_0s, Sample_10min, 30s)
+        let timeSec = index * 10; // Varsayılan 10'ar saniye
+        const match = spec.name.match(/(\d+)\s*(s|sec|sn|m|min|dk)?/i);
+        if (match) {
+            const num = parseFloat(match[1]);
+            const unit = (match[2] || '').toLowerCase();
+            if (unit.startsWith('m') || unit === 'dk') {
+                timeSec = num * 60;
+            } else {
+                timeSec = num;
+            }
+        }
+
+        // Hedef dalga sayısına en yakın indeksi bul
+        let closestIdx = 0;
+        let minDiff = Infinity;
+        for (let i = 0; i < spec.rawX.length; i++) {
+            const diff = Math.abs(spec.rawX[i] - targetWn);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestIdx = i;
+            }
+        }
+
+        const yVal = spec.rawY[closestIdx];
+        const yMode = document.getElementById('ftir-y-mode')?.value || 'raw';
+
+        let absVal = yVal;
+        let tVal = undefined;
+
+        if (yMode === 'raw' || yMode === 'absorbance_to_transmittance') {
+            // Y degeri %T ise
+            tVal = yVal;
+            absVal = 2 - Math.log10(Math.max(0.001, yVal));
+        } else {
+            absVal = yVal;
+            tVal = Math.pow(10, 2 - absVal);
+        }
+
+        ftirKineticsRecords.push({
+            time: timeSec,
+            transmittance: tVal,
+            absorbance: absVal,
+            conversion: 0
+        });
+    });
+
+    processAndPlotKinetics();
+    showToast(`${ftirSpectraList.length} adet FTIR spektrumundan ${targetWn} cm⁻¹ pik değerleri çıkarıldı!`, 'success');
+}
+
+function exportKineticsCSV() {
+    if (ftirKineticsRecords.length === 0) {
+        showToast('Dışa aktarılacak kinetik veri bulunmuyor.', 'warning');
+        return;
+    }
+
+    const targetWn = document.getElementById('kinetics-target-wavenumber')?.value || '810';
+    let csv = `Zaman (s),Transmitans (%T @ ${targetWn} cm-1),Absorbans (A @ ${targetWn} cm-1),Yuzde Donusum (% Conversion)\n`;
+
+    ftirKineticsRecords.forEach(r => {
+        csv += `${r.time.toFixed(2)},${r.transmittance !== undefined ? r.transmittance.toFixed(4) : ''},${r.absorbance.toFixed(6)},${r.conversion.toFixed(4)}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `FTIR_Kinetik_Donusum_${targetWn}cm1_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Kinetik dönüşüm tablosu CSV olarak indirildi!', 'success');
+}
+
+function downloadKineticsChart(format = 'png') {
+    const chartDiv = document.getElementById('ftir-kinetics-plotly-chart');
+    if (!chartDiv) return;
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const targetWn = document.getElementById('kinetics-target-wavenumber')?.value || '810';
+
+    Plotly.downloadImage(chartDiv, {
+        format: format,
+        width: 1920,
+        height: 1080,
+        filename: `ftir_kinetik_donusum_${targetWn}cm1_${dateStr}`
+    }).then(() => {
+        showToast(`Kinetik Grafiği ${format.toUpperCase()} olarak indirildi!`, 'success');
+    }).catch(() => {
+        showToast('Görsel indirilirken hata oluştu.', 'error');
+    });
+}
+

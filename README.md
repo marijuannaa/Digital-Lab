@@ -18,7 +18,12 @@ Tüm işlemler **%100 istemci tarafında (tarayıcınızda)** gerçekleşir; hi�
 - **Otomatik Pik & Fonksiyonel Grup Tespiti:**
   - Ayarlanabilir hassasiyet ile pik tepe ve çukurlarını otomatik etiketleme.
   - O-H, N-H, C-H, C=O (karbonil), C≡C, C=C, C-O ve parmak izi bölgelerini otomatik analiz eden kimyasal fonksiyonel grup motoru.
-- **Yüksek Çözünürlüklü Dışa Aktarma:** PNG (yüksek DPI), SVG ve JPEG grafik indirme; pik tablosunu CSV olarak kaydetme.
+- **⚡ Real-Time Kinetik & % Dönüşüm (% Conversion) Analizörü:**
+  - Belirli bir reaksiyon piki (örneğin $810\text{ cm}^{-1}$ akrilat/vinil $C=C$ çift bağı) takip edilerek reaksiyon ilerleyişinin $\% \text{Conversion}_t = \frac{A_0 - A_t}{A_0} \times 100$ formülüyle hesaplanması.
+  - İnteraktif kinetik eğrisi grafiği, $t_{50\%}$ yarı ömür ve $\% \text{Conv}_{\max}$ nihai dönüşüm metrikleri.
+  - Çoklu zaman serisi FTIR spektrumlarından veya doğrudan zaman-sinyal CSV dosyalarından veri çekme.
+- **Yüksek Çözünürlüklü Dışa Aktarma:** PNG (yüksek DPI), SVG ve JPEG grafik indirme; pik ve kinetik tablolarını CSV olarak kaydetme.
+
 
 ---
 
