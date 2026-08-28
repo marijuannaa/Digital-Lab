@@ -610,7 +610,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800/80">
                             <div>
                                 <label class="text-[11px] text-slate-400 block mb-1">Takip Edilen Pik (cm⁻¹)</label>
-                                <input type="number" id="kinetics-target-wavenumber" value="810" class="w-full bg-slate-900 border border-slate-700 text-xs text-emerald-300 font-mono rounded-lg p-2 focus:ring-1 focus:ring-emerald-500 outline-none" placeholder="örn: 810" onchange="processAndPlotKinetics()">
+                                <input type="number" id="kinetics-target-wavenumber" value="810" class="w-full bg-slate-900 border border-slate-700 text-xs text-emerald-300 font-mono rounded-lg p-2 focus:ring-1 focus:ring-emerald-500 outline-none" placeholder="örn: 810" oninput="updateFTIRPlot(); if(ftirSpectraList.length>=2) extractKineticsFromSpectra(); else processAndPlotKinetics();">
                             </div>
                             <div>
                                 <label class="text-[11px] text-slate-400 block mb-1">Başlangıç A₀ (Boş = Otomatik t=0)</label>

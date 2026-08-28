@@ -304,6 +304,47 @@ function updateFTIRPlot() {
     });
 
     const layout = getFTIRPlotlyLayout();
+
+    // Eğer Kinetik Modu açıksa, takip edilen pikin (örn: 810 cm⁻¹) üzerine dikey kılavuz çizgisi ve etiket ekle
+    const isKineticsOn = document.getElementById('ftir-toggle-kinetics')?.checked || false;
+    const targetWn = parseFloat(document.getElementById('kinetics-target-wavenumber')?.value || '810');
+
+    if (isKineticsOn && !isNaN(targetWn)) {
+        annotations.push({
+            x: targetWn,
+            y: (yMode === 'raw' || yMode === 'absorbance_to_transmittance') ? 10 : 0.85,
+            xref: 'x',
+            yref: 'y',
+            text: `⚡ Takip: ${targetWn} cm⁻¹`,
+            showarrow: true,
+            arrowhead: 2,
+            ax: 0,
+            ay: -35,
+            arrowcolor: '#10b981',
+            font: { size: 11, color: '#34d399', family: 'Inter', weight: 'bold' },
+            bgcolor: 'rgba(6, 78, 59, 0.9)',
+            bordercolor: '#10b981',
+            borderwidth: 1.5,
+            borderpad: 4
+        });
+
+        // Dikey kesikli çizgi ekle
+        if (!layout.shapes) layout.shapes = [];
+        layout.shapes.push({
+            type: 'line',
+            x0: targetWn,
+            x1: targetWn,
+            y0: 0,
+            y1: 1,
+            yref: 'paper',
+            line: {
+                color: 'rgba(16, 185, 129, 0.7)',
+                width: 1.8,
+                dash: 'dash'
+            }
+        });
+    }
+
     layout.annotations = annotations;
 
     Plotly.react('ftir-plotly-chart', plotlyTraces, layout);
@@ -554,20 +595,99 @@ function toggleFTIRKinetics(enable) {
     if (enable) {
         section.classList.remove('hidden');
         initFTIRKineticsPlotly();
-        if (ftirKineticsRecords.length === 0) {
-            loadFTIRKineticsSampleData();
+
+        // Eğer halihazırda 2 veya daha fazla FTIR spektrumu yüklenmişse doğrudan onlardan çek
+        if (ftirSpectraList.length >= 2) {
+            extractKineticsFromSpectra();
         } else {
-            processAndPlotKinetics();
+            // Yüklü spektrum yoksa veya tek bir spektrum varsa, otomatik zaman serisi spektrumlarını (0sn, 1sn, 5sn, 100sn...) yükle
+            loadFTIRMultiSpectraKineticSeries();
         }
+
+        // Üst FTIR grafiğini güncelle (810 cm⁻¹ takip çizgisini çizdir)
+        updateFTIRPlot();
+
         setTimeout(() => {
-            Plotly.Plots.resize('ftir-kinetics-plotly-chart');
-            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (document.getElementById('ftir-kinetics-plotly-chart')) {
+                Plotly.Plots.resize('ftir-kinetics-plotly-chart');
+            }
+            if (document.getElementById('ftir-plotly-chart')) {
+                Plotly.Plots.resize('ftir-plotly-chart');
+            }
+            section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 150);
-        showToast('Real-Time Kinetik ve % Dönüşüm Analizi aktif edildi!', 'info');
+
+        showToast('⚡ 2. Grafik: Real-Time Kinetik & % Dönüşüm Grafiği aktif edildi!', 'success');
     } else {
         section.classList.add('hidden');
+        updateFTIRPlot(); // Takip çizgisini kaldır
         showToast('Kinetik analiz bölümü gizlendi.');
     }
+}
+
+// Otomatik Çoklu Spektrum Kinetik Serisi Yükleyici (0sn, 1sn, 5sn, 15sn, 30sn, 60sn, 100sn, 180sn)
+function loadFTIRMultiSpectraKineticSeries() {
+    ftirSpectraList = [];
+    ftirKineticsRecords = [];
+
+    const timeSteps = [
+        { t: 0, conv: 0.00, name: 'akrilat_polimerizasyon_0sn.csv', t810: 66.25 },
+        { t: 1, conv: 12.5, name: 'akrilat_polimerizasyon_1sn.csv', t810: 69.80 },
+        { t: 5, conv: 35.0, name: 'akrilat_polimerizasyon_5sn.csv', t810: 76.50 },
+        { t: 15, conv: 58.0, name: 'akrilat_polimerizasyon_15sn.csv', t810: 84.80 },
+        { t: 30, conv: 72.5, name: 'akrilat_polimerizasyon_30sn.csv', t810: 90.10 },
+        { t: 60, conv: 82.0, name: 'akrilat_polimerizasyon_60sn.csv', t810: 93.20 },
+        { t: 100, conv: 86.8, name: 'akrilat_polimerizasyon_100sn.csv', t810: 94.70 },
+        { t: 180, conv: 88.5, name: 'akrilat_polimerizasyon_180sn.csv', t810: 95.30 }
+    ];
+
+    timeSteps.forEach((step, idx) => {
+        const xVals = [];
+        const yVals = [];
+
+        // 400 - 4000 cm⁻¹ sentetik spektrum
+        for (let w = 400; w <= 4000; w += 4) {
+            xVals.push(w);
+            let t = 96.5 + (Math.random() - 0.5) * 1.5;
+
+            // Sabit Karbonil Piki (C=O @ 1720 cm⁻¹) - Referans
+            t -= 75 * Math.exp(-Math.pow((w - 1720) / 22, 2));
+
+            // Sabit C-H piki (2930 cm⁻¹)
+            t -= 40 * Math.exp(-Math.pow((w - 2930) / 30, 2));
+
+            // Sabit C-O piki (1190 cm⁻¹)
+            t -= 55 * Math.exp(-Math.pow((w - 1190) / 30, 2));
+
+            // ZAMANLA AZALAN AKRİLAT PİKLERİ:
+            // 1. Akrilat C=C düzlem dışı bükülme @ 810 cm⁻¹
+            const remainingDoubleBond = 1 - (step.conv / 100);
+            const peak810Depth = 30.25 * remainingDoubleBond;
+            t -= peak810Depth * Math.exp(-Math.pow((w - 810) / 16, 2));
+
+            // 2. Akrilat C=C gerilme @ 1636 cm⁻¹
+            const peak1636Depth = 25.0 * remainingDoubleBond;
+            t -= peak1636Depth * Math.exp(-Math.pow((w - 1636) / 18, 2));
+
+            yVals.push(Math.max(1.0, Math.min(100, t)));
+        }
+
+        const color = ftirDefaultColors[idx % ftirDefaultColors.length];
+        ftirSpectraList.push({
+            id: 'ftir_kin_' + step.t + '_' + Date.now(),
+            name: step.name,
+            rawX: xVals,
+            rawY: yVals,
+            processedX: xVals,
+            processedY: yVals,
+            color: color,
+            visible: true
+        });
+    });
+
+    updateFTIRSpectraUIList();
+    processAndPlotFTIRData();
+    extractKineticsFromSpectra();
 }
 
 function initFTIRKineticsPlotly() {
