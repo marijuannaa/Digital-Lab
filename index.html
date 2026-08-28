@@ -836,6 +836,20 @@
                                 <input type="range" id="uvvis-peak-sensitivity" min="1" max="10" value="5" class="w-28 accent-amber-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer" onchange="updateUVVisPlot()">
                             </div>
                         </div>
+
+                        <!-- Fotokatalitik Bozunma & Kinetik Analizi Toggle -->
+                        <div class="flex flex-col gap-2 pt-2.5 border-t border-slate-800 bg-purple-500/5 -mx-4 -mb-4 p-4 rounded-b-xl border-t-purple-500/20">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs text-purple-300 font-semibold flex items-center gap-1.5 cursor-pointer" for="uvvis-toggle-degradation">
+                                    <i data-lucide="zap" class="w-3.5 h-3.5 text-purple-400"></i>
+                                    ⚡ Bozunma & Kinetik Analizi
+                                </label>
+                                <input type="checkbox" id="uvvis-toggle-degradation" class="w-4 h-4 accent-purple-500 rounded cursor-pointer" onchange="toggleUVVisDegradation(this.checked)">
+                            </div>
+                            <p class="text-[10px] text-slate-400 leading-tight">
+                                Boyar madde / kirleticinin fotokatalitik bozunma verimini (% Degradation) ve ln(C₀/Cₜ) = k·t reaksiyon hızını hesaplar.
+                            </p>
+                        </div>
                     </div>
 
                     <!-- Yüklenen UV-Vis Spektrum Listesi -->
@@ -921,6 +935,166 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+
+                    <!-- ========================================================================= -->
+                    <!-- FOTOKATALİTİK BOZUNMA (DEGRADATION) & KİNETİK ANALİZ BÖLÜMÜ                -->
+                    <!-- ========================================================================= -->
+                    <div id="uvvis-degradation-section" class="hidden glass-panel p-5 rounded-2xl border border-purple-500/30 shadow-2xl space-y-5 animate-fade-in bg-slate-950/70">
+                        
+                        <!-- Başlık & Mod Seçici -->
+                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-slate-800 pb-3">
+                            <div class="flex items-center gap-2.5">
+                                <div class="p-2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-xl">
+                                    <i data-lucide="zap" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                                        <span>Fotokatalitik Bozunma & Yalancı 1. Derece Kinetik</span>
+                                        <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">Degradation & Kinetics</span>
+                                    </h3>
+                                    <p class="text-xs text-slate-400 mt-0.5">
+                                        <span class="text-purple-300 font-mono">%Degradation = ((C₀ - Cₜ) / C₀) × 100</span> &bull; <span class="text-cyan-300 font-mono">ln(C₀ / Cₜ) = k · t</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Görünüm Modu Butonları -->
+                            <div class="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800 shrink-0">
+                                <button onclick="setUVVisDegradationPlotMode('degradation')" data-mode="degradation" class="degradation-mode-btn px-3 py-1.5 text-xs rounded-lg font-medium transition bg-purple-600 text-white shadow-md shadow-purple-600/30">
+                                    % Bozunma Verimi
+                                </button>
+                                <button onclick="setUVVisDegradationPlotMode('c_ratio')" data-mode="c_ratio" class="degradation-mode-btn px-3 py-1.5 text-xs rounded-lg font-medium transition bg-slate-800 text-slate-300 hover:text-white">
+                                    C_t / C_0
+                                </button>
+                                <button onclick="setUVVisDegradationPlotMode('kinetics')" data-mode="kinetics" class="degradation-mode-btn px-3 py-1.5 text-xs rounded-lg font-medium transition bg-slate-800 text-slate-300 hover:text-white">
+                                    ln(C₀/Cₜ) Kinetik
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Parametreler & Girişler -->
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800/80">
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">Takip Edilen Pik (λ - nm)</label>
+                                <input type="number" id="degradation-target-wavelength" value="664" class="w-full bg-slate-900 border border-slate-700 text-xs text-purple-300 font-mono rounded-lg p-2 focus:ring-1 focus:ring-purple-500 outline-none" placeholder="örn: 664" oninput="updateUVVisPlot(); if(uvvisSpectraList.length>=2) extractDegradationFromSpectra(); else processAndPlotDegradation();">
+                            </div>
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1">Bozunma CSV Yükle</label>
+                                <label class="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 cursor-pointer flex items-center justify-center gap-1.5 transition">
+                                    <i data-lucide="upload" class="w-3.5 h-3.5 text-purple-400"></i>
+                                    <span>Zaman-Numune CSV</span>
+                                    <input type="file" id="degradation-file-input" accept=".csv,.txt,.dat" class="hidden" onchange="handleDegradationCSVUpload(this.files)">
+                                </label>
+                            </div>
+                            <div class="flex items-end">
+                                <button onclick="loadUVVisDegradationMultiSampleSampleData()" class="w-full py-2 px-3 text-xs bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 rounded-lg font-medium transition flex items-center justify-center gap-1.5">
+                                    <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-400"></i>
+                                    <span>Örnek 3 Numune Yükle</span>
+                                </button>
+                            </div>
+                            <div class="flex items-end">
+                                <button onclick="extractDegradationFromSpectra()" class="w-full py-2 px-3 text-xs bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-semibold transition flex items-center justify-center gap-1.5 shadow-md shadow-purple-600/20">
+                                    <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                                    <span>Spektrumlardan Çek</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Özet Metrik Kartları -->
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <div class="glass-panel p-3.5 rounded-xl border border-purple-500/20 flex items-center justify-between">
+                                <div>
+                                    <span class="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Maksimum Bozunma (%Deg_max)</span>
+                                    <div id="degradation-metric-max-deg" class="text-xl font-extrabold text-purple-400 font-mono mt-0.5">%0.00</div>
+                                </div>
+                                <div class="p-2.5 rounded-lg bg-purple-500/10 text-purple-400">
+                                    <i data-lucide="percent" class="w-5 h-5"></i>
+                                </div>
+                            </div>
+                            <div class="glass-panel p-3.5 rounded-xl border border-blue-500/20 flex items-center justify-between">
+                                <div>
+                                    <span class="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Hız Sabiti (k - Eğim)</span>
+                                    <div id="degradation-metric-k" class="text-xl font-extrabold text-blue-400 font-mono mt-0.5">0.0000 dk⁻¹</div>
+                                </div>
+                                <div class="p-2.5 rounded-lg bg-blue-500/10 text-blue-400">
+                                    <i data-lucide="trending-up" class="w-5 h-5"></i>
+                                </div>
+                            </div>
+                            <div class="glass-panel p-3.5 rounded-xl border border-emerald-500/20 flex items-center justify-between">
+                                <div>
+                                    <span class="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Regresyon Uyumu (R²)</span>
+                                    <div id="degradation-metric-r2" class="text-xl font-extrabold text-emerald-400 font-mono mt-0.5">-</div>
+                                </div>
+                                <div class="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                                    <i data-lucide="check-circle" class="w-5 h-5"></i>
+                                </div>
+                            </div>
+                            <div class="glass-panel p-3.5 rounded-xl border border-amber-500/20 flex items-center justify-between">
+                                <div>
+                                    <span class="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Bozunma Yarı Ömrü (t_1/2)</span>
+                                    <div id="degradation-metric-thalf" class="text-xl font-extrabold text-amber-400 font-mono mt-0.5">-</div>
+                                </div>
+                                <div class="p-2.5 rounded-lg bg-amber-500/10 text-amber-400">
+                                    <i data-lucide="timer" class="w-5 h-5"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Plotly 2. Bozunma & Kinetik Grafiği -->
+                        <div class="glass-panel p-4 rounded-xl border border-slate-800 shadow-lg relative min-h-[420px] flex flex-col">
+                            <div class="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-800">
+                                <h4 class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                                    <i data-lucide="trending-up" class="w-4 h-4 text-purple-400"></i>
+                                    2. Grafik: Fotokatalitik Bozunma & Kinetik Karşılaştırma Grafiği
+                                </h4>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="downloadDegradationChart('png')" class="px-2.5 py-1 text-xs bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition font-medium flex items-center gap-1">
+                                        <i data-lucide="download" class="w-3 h-3"></i> PNG
+                                    </button>
+                                    <button onclick="downloadDegradationChart('svg')" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition font-medium flex items-center gap-1">
+                                        <i data-lucide="file-code" class="w-3.5 h-3.5 text-emerald-400"></i> SVG
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="uvvis-degradation-plotly-chart" class="w-full flex-1 min-h-[360px] rounded-lg"></div>
+                        </div>
+
+                        <!-- Zamana Bağlı Bozunma Tablosu -->
+                        <div class="glass-panel p-4 rounded-xl border border-slate-800 shadow-lg">
+                            <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                                <h4 class="text-xs font-semibold text-slate-200 flex items-center gap-2">
+                                    <i data-lucide="table" class="w-4 h-4 text-purple-400"></i>
+                                    Fotokatalitik Bozunma Değerleri Tablosu (Süre, Absorbans C_t, C_t/C_0, % Bozunma, ln(C₀/Cₜ))
+                                </h4>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xs text-slate-400 font-mono" id="uvvis-degradation-row-count">0 veri noktası</span>
+                                    <button onclick="exportDegradationCSV()" class="text-xs text-purple-400 hover:text-purple-300 font-medium flex items-center gap-1">
+                                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                                        <span>Bozunma CSV İndir</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="overflow-x-auto max-h-52 overflow-y-auto">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="bg-slate-900/80 text-slate-400 border-b border-slate-800 sticky top-0 font-mono">
+                                            <th class="p-2">Numune / Seri</th>
+                                            <th class="p-2">Zaman (t) [dk]</th>
+                                            <th class="p-2">Absorbans (Cₜ)</th>
+                                            <th class="p-2">Derişim Oranı (Cₜ / C₀)</th>
+                                            <th class="p-2">Bozunma Verimi (% Degradation)</th>
+                                            <th class="p-2">Yalancı 1. Derece ln(C₀ / Cₜ)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="uvvis-degradation-table-body" class="divide-y divide-slate-800/60 text-slate-300">
+                                        <!-- JS ile doldurulur -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
                 </main>
             </div>

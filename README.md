@@ -33,7 +33,14 @@ Tüm işlemler **%100 istemci tarafında (tarayıcınızda)** gerçekleşir; hi�
 - **$\lambda_{\max}$ Tespiti & Spektral Bölge Sınıflandırması:**
   - Maksimum ve minimum absorbans dalga boylarını ($\lambda_{\max}$) tespit etme.
   - UV-C, UV-B, UV-A ve Görünür bölge (380–750 nm) renk spektrumunu tamamlayıcı renk paleti ile eşleştirme.
-- **Spektrum Yönetimi:** Renk paleti seçimi, tekil/toplu görünürlük kontrolü ve yüksek kaliteli grafik çıktısı.
+- **⚡ Fotokatalitik & Kimyasal Bozunma (Degradation) & Kinetik Analizörü:**
+  - Belirli bir boyar madde / kirletici piki (örneğin $\lambda_{\max} = 664\text{ nm}$ Metilen Mavisi, $554\text{ nm}$ Rhodamine B) takip edilerek zamana bağlı yüzde bozunma veriminin hesaplanması:
+    $$\text{Degradation } (\%) = \frac{C_0 - C_t}{C_0} \times 100$$
+  - **Yalancı 1. Derece Kinetik (Pseudo-First-Order) Modeli:** $\ln(C_0 / C_t) = k \cdot t$ doğrusal regresyonu ile reaksiyon hız sabiti ($k$), korelasyon ($R^2$) ve yarı ömür ($t_{1/2}$) tayini.
+  - **Çoklu Numune Karşılaştırması (Overlay):** Saf Boya (fotoliz kontrolü), Katalizörlü numuneler ve nanokompozitleri aynı grafikte üst üste kıyaslama.
+  - **3 Farklı Grafik Modu:** `% Bozunma Verimi vs Zaman`, `C_t / C_0 vs Zaman`, `ln(C_0 / C_t) vs Zaman`.
+  - **Akıllı Süre Ayrıştırıcı (`0dk`, `15dk`, `30dk`, `60dk`):** Dosya adlarından süreleri otomatik okuma ve kronolojik sıralama.
+- **Spektrum Yönetimi:** Renk paleti seçimi, tekil/toplu görünürlük kontrolü ve yüksek kaliteli grafik çıktısı (PNG, SVG, JPEG, CSV).
 
 ---
 
