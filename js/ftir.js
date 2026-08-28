@@ -632,14 +632,50 @@ function getFTIRKineticsPlotlyLayout() {
     };
 }
 
+// Dosya Adından Saniye Bilgisini Akıllıca Ayıklama (örn: 1sn, 5sn, 100sn, 0s, 10sec, 1dk vb.)
+function extractSecondsFromFileName(fileName, defaultFallbackIndex = 0) {
+    if (!fileName) return defaultFallbackIndex * 10;
+    
+    // Uzantıyı temizle (.csv, .txt, .dat vb.)
+    const cleanName = fileName.replace(/\.[^/.]+$/, "").trim();
+
+    // 1. Dosya adının sonundaki "1sn", "5sn", "100sn", "100s", "100sec", "100saniye" kalıpları
+    const endUnitMatch = cleanName.match(/(?:[_\-\s]|^)(\d+(?:\.\d+)?)\s*(sn|saniye|sec|seconds?|s)$/i) ||
+                         cleanName.match(/(\d+(?:\.\d+)?)\s*(sn|saniye|sec|seconds?|s)$/i);
+    if (endUnitMatch) {
+        return parseFloat(endUnitMatch[1]);
+    }
+
+    // 2. Dakika kalıpları: "1dk", "5dk", "1min", "5min" -> saniyeye çevir
+    const endMinMatch = cleanName.match(/(?:[_\-\s]|^)(\d+(?:\.\d+)?)\s*(dk|dakika|min|mins|minutes?)$/i) ||
+                        cleanName.match(/(\d+(?:\.\d+)?)\s*(dk|dakika|min|mins|minutes?)$/i);
+    if (endMinMatch) {
+        return parseFloat(endMinMatch[1]) * 60;
+    }
+
+    // 3. Dosyanın içindeki herhangi bir yerdeki "100sn" veya "5sn"
+    const anyUnitMatch = cleanName.match(/(\d+(?:\.\d+)?)\s*(sn|saniye|sec|seconds?|s)(?=[_\-\s\.]|$)/i);
+    if (anyUnitMatch) {
+        return parseFloat(anyUnitMatch[1]);
+    }
+
+    // 4. Dosya adının sonundaki saf sayılar: örn: "Numune_100", "Sample-05", "Polymer_0"
+    const endNumberMatch = cleanName.match(/(?:[_\-\s])(\d+(?:\.\d+)?)$/);
+    if (endNumberMatch) {
+        return parseFloat(endNumberMatch[1]);
+    }
+
+    return defaultFallbackIndex * 10;
+}
+
 // Kinetik Verilerini Hesaplama ve Grafiğe Çizme
 function processAndPlotKinetics() {
     if (ftirKineticsRecords.length === 0) return;
 
-    // Verileri zamana göre sırala
+    // Verileri saniyeye (zamana) göre küçükten büyüğe sırala (Kronolojik Sıralama)
     ftirKineticsRecords.sort((a, b) => a.time - b.time);
 
-    // Başlangıç A0 Absorbansını Belirle
+    // Başlangıç A0 Absorbansını Belirle (t=0 anı)
     const manualA0Input = parseFloat(document.getElementById('kinetics-manual-a0')?.value);
     if (!isNaN(manualA0Input) && manualA0Input > 0) {
         ftirKineticsA0 = manualA0Input;
@@ -651,29 +687,27 @@ function processAndPlotKinetics() {
 
     // Her satır için Dönüşüm Hesapla: % Conversion = ((A0 - At) / A0) * 100
     ftirKineticsRecords.forEach(rec => {
-        // Eğer transmitans verilmişse ve absorbans yoksa: At = 2 - log10(%T)
         if ((rec.absorbance === undefined || isNaN(rec.absorbance)) && rec.transmittance !== undefined) {
             let t = Math.max(0.0001, Math.min(100, rec.transmittance));
             rec.absorbance = 2 - Math.log10(t);
         } else if (rec.transmittance === undefined && rec.absorbance !== undefined) {
-            // Absorbans -> Transmitans: %T = 10^(2 - A)
             rec.transmittance = Math.pow(10, 2 - rec.absorbance);
         }
 
-        // Formül: % Conversion = ((A0 - At) / A0) * 100
         const conv = ((ftirKineticsA0 - rec.absorbance) / ftirKineticsA0) * 100;
-        rec.conversion = Math.max(0, conv); // Negatif sapmaları sıfıra sabitle
+        rec.conversion = Math.max(0, conv);
     });
 
-    // Metrikleri Hesapla
     const times = ftirKineticsRecords.map(r => r.time);
     const conversions = ftirKineticsRecords.map(r => r.conversion);
     const absorbances = ftirKineticsRecords.map(r => r.absorbance);
+    const hoverTexts = ftirKineticsRecords.map(r => 
+        `<b>${r.fileName || 'Numune'}</b><br>Zaman: ${r.time} sn<br>% Dönüşüm: %${r.conversion.toFixed(2)}<br>Absorbans (A): ${r.absorbance.toFixed(4)}`
+    );
 
     const maxConv = Math.max(...conversions);
     const halfMaxConv = maxConv / 2;
 
-    // t_50% interpolasyonu (Dönüşümün yarısına ulaştığı zaman)
     let t50 = null;
     for (let i = 0; i < conversions.length - 1; i++) {
         if (conversions[i] <= halfMaxConv && conversions[i + 1] >= halfMaxConv) {
@@ -688,39 +722,41 @@ function processAndPlotKinetics() {
         }
     }
 
-    // Metrik Kartlarını Güncelle
     const metricMaxConv = document.getElementById('kinetics-metric-max-conv');
     const metricA0 = document.getElementById('kinetics-metric-a0');
     const metricT50 = document.getElementById('kinetics-metric-t50');
 
     if (metricMaxConv) metricMaxConv.innerText = `%${maxConv.toFixed(2)}`;
     if (metricA0) metricA0.innerText = `${ftirKineticsA0.toFixed(4)}`;
-    if (metricT50) metricT50.innerText = t50 !== null ? `${t50.toFixed(1)} s` : '-';
+    if (metricT50) metricT50.innerText = t50 !== null ? `${t50.toFixed(1)} sn` : '-';
 
-    // Plotly Çizimi
     const traces = [
         {
             x: times,
             y: conversions,
             mode: 'lines+markers',
             name: '% Dönüşüm (% Conversion)',
+            text: hoverTexts,
+            hoverinfo: 'text',
             line: { color: '#10b981', width: 2.5, shape: 'spline' },
-            marker: { color: '#10b981', size: 6 }
+            marker: { color: '#10b981', size: 7 }
         },
         {
             x: times,
             y: absorbances,
-            mode: 'lines',
+            mode: 'lines+markers',
             name: 'Pik Absorbansı (A_t)',
             yaxis: 'y2',
-            line: { color: '#38bdf8', width: 2, dash: 'dot' }
+            text: hoverTexts,
+            hoverinfo: 'text',
+            line: { color: '#38bdf8', width: 1.8, dash: 'dot' },
+            marker: { color: '#38bdf8', size: 5 }
         }
     ];
 
     const layout = getFTIRKineticsPlotlyLayout();
     Plotly.react('ftir-kinetics-plotly-chart', traces, layout);
 
-    // Kinetik Tablosunu Doldur
     updateFTIRKineticsTable();
 }
 
@@ -732,56 +768,56 @@ function updateFTIRKineticsTable() {
     if (rowCountEl) rowCountEl.innerText = `${ftirKineticsRecords.length} veri noktası`;
 
     if (ftirKineticsRecords.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500 italic">Kinetik veri bulunamadı.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500 italic">Kinetik veri bulunamadı.</td></tr>`;
         return;
     }
 
     tableBody.innerHTML = ftirKineticsRecords.map((r, idx) => `
         <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/80 text-xs">
-            <td class="p-2 font-mono text-slate-300 font-medium">${r.time.toFixed(1)} s</td>
+            <td class="p-2 font-medium text-slate-200 flex items-center gap-1.5 truncate max-w-[180px]" title="${r.fileName || ('Numune ' + (idx+1))}">
+                <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+                <span class="truncate">${r.fileName || ('Numune_' + r.time + 'sn')}</span>
+            </td>
+            <td class="p-2 font-mono text-amber-300 font-semibold">${r.time} sn</td>
             <td class="p-2 font-mono text-cyan-300">${r.transmittance !== undefined ? r.transmittance.toFixed(2) + '%' : '-'}</td>
             <td class="p-2 font-mono text-sky-300">${r.absorbance.toFixed(4)}</td>
             <td class="p-2 font-mono text-emerald-400 font-bold">%${r.conversion.toFixed(2)}</td>
         </tr>
     `).join('');
+
+    lucide.createIcons();
 }
 
-// Örnek Akrilat Fotopolimerizasyonu Gerçekçi Kinetik Verisi (810 cm⁻¹ Çift Bağ Piki)
+// Örnek Akrilat Fotopolimerizasyonu Gerçekçi Kinetik Verisi (1sn, 5sn, 100sn vb. İsimlerle)
 function loadFTIRKineticsSampleData() {
     ftirKineticsRecords = [];
 
-    // Örnek: t=0 anında %T0 = 66.25% (A0 = 2 - log10(66.25) ≈ 0.1788)
-    const timeSteps = [0, 2, 4, 6, 8, 10, 15, 20, 30, 45, 60, 90, 120, 150, 180];
-    const initialT = 66.25;
-    const initialA = 2 - Math.log10(initialT); // ~0.1788
+    const sampleSteps = [
+        { time: 0, file: 'akrilat_polimerizasyon_0sn.csv', t: 66.25 },
+        { time: 1, file: 'akrilat_polimerizasyon_1sn.csv', t: 68.10 },
+        { time: 3, file: 'akrilat_polimerizasyon_3sn.csv', t: 71.45 },
+        { time: 5, file: 'akrilat_polimerizasyon_5sn.csv', t: 75.80 },
+        { time: 10, file: 'akrilat_polimerizasyon_10sn.csv', t: 82.20 },
+        { time: 20, file: 'akrilat_polimerizasyon_20sn.csv', t: 87.50 },
+        { time: 30, file: 'akrilat_polimerizasyon_30sn.csv', t: 90.40 },
+        { time: 60, file: 'akrilat_polimerizasyon_60sn.csv', t: 93.10 },
+        { time: 100, file: 'akrilat_polimerizasyon_100sn.csv', t: 94.60 },
+        { time: 150, file: 'akrilat_polimerizasyon_150sn.csv', t: 95.20 },
+        { time: 180, file: 'akrilat_polimerizasyon_180sn.csv', t: 95.50 }
+    ];
 
-    timeSteps.forEach(t => {
-        if (t === 0) {
-            ftirKineticsRecords.push({
-                time: t,
-                transmittance: initialT,
-                absorbance: initialA,
-                conversion: 0.0
-            });
-        } else {
-            // Sigmoid fotopolimerizasyon eğrisi simülasyonu
-            const plateau = 0.88; // %88 nihai dönüşüm
-            const k = 0.08; // Reaksiyon hız sabiti
-            const t0 = 8; // İndüksiyon periyodu
-            const simulatedConv = plateau / (1 + Math.exp(-k * (t - t0)));
+    const initialA = 2 - Math.log10(sampleSteps[0].t);
 
-            // At = A0 * (1 - Conv)
-            const at = initialA * (1 - simulatedConv) + (Math.random() - 0.5) * 0.002;
-            const boundedAt = Math.max(0.01, at);
-            const tt = Math.pow(10, 2 - boundedAt);
-
-            ftirKineticsRecords.push({
-                time: t,
-                transmittance: tt,
-                absorbance: boundedAt,
-                conversion: simulatedConv * 100
-            });
-        }
+    sampleSteps.forEach(step => {
+        const at = 2 - Math.log10(step.t);
+        const conv = ((initialA - at) / initialA) * 100;
+        ftirKineticsRecords.push({
+            time: step.time,
+            fileName: step.file,
+            transmittance: step.t,
+            absorbance: at,
+            conversion: Math.max(0, conv)
+        });
     });
 
     const wnInput = document.getElementById('kinetics-target-wavenumber');
@@ -791,10 +827,10 @@ function loadFTIRKineticsSampleData() {
     if (a0Input) a0Input.value = initialA.toFixed(4);
 
     processAndPlotKinetics();
-    showToast('Örnek Akrilat Fotopolimerizasyon Kinetik Verisi (810 cm⁻¹) yüklendi!', 'success');
+    showToast('Örnek Akrilat Kinetik Verisi (0sn, 1sn, 5sn, 100sn...) yüklendi!', 'success');
 }
 
-// Kinetik CSV Dosyası Yükleme (Time, %T veya Time, A)
+// Kinetik CSV Dosyası Yükleme
 function handleKineticsCSVUpload(files) {
     const file = files[0];
     if (!file) return;
@@ -819,14 +855,13 @@ function handleKineticsCSVUpload(files) {
                 const sigVal = parseFloat(row[1]);
 
                 if (!isNaN(tVal) && !isNaN(sigVal)) {
-                    // Sinyalin 1'den büyük olması durumunda %T varsay
                     const isT = sigVal > 2.5; 
                     if (isT) {
                         const abs = 2 - Math.log10(Math.max(0.001, sigVal));
-                        ftirKineticsRecords.push({ time: tVal, transmittance: sigVal, absorbance: abs, conversion: 0 });
+                        ftirKineticsRecords.push({ time: tVal, fileName: `${file.name} (t=${tVal}s)`, transmittance: sigVal, absorbance: abs, conversion: 0 });
                     } else {
                         const t = Math.pow(10, 2 - sigVal);
-                        ftirKineticsRecords.push({ time: tVal, transmittance: t, absorbance: sigVal, conversion: 0 });
+                        ftirKineticsRecords.push({ time: tVal, fileName: `${file.name} (t=${tVal}s)`, transmittance: t, absorbance: sigVal, conversion: 0 });
                     }
                 }
             }
@@ -844,7 +879,7 @@ function handleKineticsCSVUpload(files) {
     });
 }
 
-// Yüklenmiş Çoklu FTIR Spektrumlarından Belirli Dalga Sayısını Çekme
+// Yüklenmiş Çoklu FTIR Spektrumlarından Dosya Sonu Saniyeleri (örn: 1sn, 5sn, 100sn) Okuyarak Kinetik Çıkarma
 function extractKineticsFromSpectra() {
     if (ftirSpectraList.length < 2) {
         showToast('Spektrumlardan kinetik çıkarmak için en az 2 FTIR spektrumu yüklemelisiniz.', 'warning');
@@ -855,18 +890,8 @@ function extractKineticsFromSpectra() {
     ftirKineticsRecords = [];
 
     ftirSpectraList.forEach((spec, index) => {
-        // İsimdeki süreyi tahmin etmeye çalış (örn: Sample_0s, Sample_10min, 30s)
-        let timeSec = index * 10; // Varsayılan 10'ar saniye
-        const match = spec.name.match(/(\d+)\s*(s|sec|sn|m|min|dk)?/i);
-        if (match) {
-            const num = parseFloat(match[1]);
-            const unit = (match[2] || '').toLowerCase();
-            if (unit.startsWith('m') || unit === 'dk') {
-                timeSec = num * 60;
-            } else {
-                timeSec = num;
-            }
-        }
+        // Dosya adının sonundaki "1sn", "5sn", "100sn" değerini otomatik tespit et
+        const timeSec = extractSecondsFromFileName(spec.name, index);
 
         // Hedef dalga sayısına en yakın indeksi bul
         let closestIdx = 0;
@@ -886,7 +911,6 @@ function extractKineticsFromSpectra() {
         let tVal = undefined;
 
         if (yMode === 'raw' || yMode === 'absorbance_to_transmittance') {
-            // Y degeri %T ise
             tVal = yVal;
             absVal = 2 - Math.log10(Math.max(0.001, yVal));
         } else {
@@ -896,14 +920,16 @@ function extractKineticsFromSpectra() {
 
         ftirKineticsRecords.push({
             time: timeSec,
+            fileName: spec.name,
             transmittance: tVal,
             absorbance: absVal,
             conversion: 0
         });
     });
 
+    // Otomatik saniyeye göre sıralanır ve t=0 anı A0 referansı alınır
     processAndPlotKinetics();
-    showToast(`${ftirSpectraList.length} adet FTIR spektrumundan ${targetWn} cm⁻¹ pik değerleri çıkarıldı!`, 'success');
+    showToast(`${ftirSpectraList.length} adet dosyadan saniyeler (örn: 1sn, 5sn, 100sn) ayıklandı ve kinetik eğri oluşturuldu!`, 'success');
 }
 
 function exportKineticsCSV() {
@@ -913,10 +939,10 @@ function exportKineticsCSV() {
     }
 
     const targetWn = document.getElementById('kinetics-target-wavenumber')?.value || '810';
-    let csv = `Zaman (s),Transmitans (%T @ ${targetWn} cm-1),Absorbans (A @ ${targetWn} cm-1),Yuzde Donusum (% Conversion)\n`;
+    let csv = `Dosya / Numune,Zaman (s),Transmitans (%T @ ${targetWn} cm-1),Absorbans (A @ ${targetWn} cm-1),Yuzde Donusum (% Conversion)\n`;
 
     ftirKineticsRecords.forEach(r => {
-        csv += `${r.time.toFixed(2)},${r.transmittance !== undefined ? r.transmittance.toFixed(4) : ''},${r.absorbance.toFixed(6)},${r.conversion.toFixed(4)}\n`;
+        csv += `"${r.fileName || ''}",${r.time.toFixed(2)},${r.transmittance !== undefined ? r.transmittance.toFixed(4) : ''},${r.absorbance.toFixed(6)},${r.conversion.toFixed(4)}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -947,4 +973,5 @@ function downloadKineticsChart(format = 'png') {
         showToast('Görsel indirilirken hata oluştu.', 'error');
     });
 }
+
 
